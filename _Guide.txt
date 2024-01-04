@@ -15,3 +15,7 @@
 5) Setup isReady Function
 	ControlClient.cs contains a function called isReady which returns a boolean indicating whether the game is in a state ready to execute effects
 	This is not strictly necessary, but it will auto retry effects for you and timed effects will pause and resume if this function is filled
+
+6) Attach Action Queue
+	Some game code will not be runnable directly from the plugin and needs to run in the Unity code loop
+	In Main.cs there is an example harmony patch to attach to the update() function of some universal object

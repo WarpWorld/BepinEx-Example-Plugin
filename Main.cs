@@ -80,9 +80,10 @@ namespace LethalCompanyTestMod
 
         public static Queue<Action> ActionQueue = new Queue<Action>();
 
+        //attach this to some game class with a function that runs every frame like the player's Update()
         [HarmonyPatch(typeof(RoundManager), "Update")]
         [HarmonyPrefix]
-        static void roundUpdate()
+        static void RunEffects()
         {
             if (ActionQueue.Count > 0)
             {
