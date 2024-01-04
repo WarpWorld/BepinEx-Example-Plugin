@@ -19,3 +19,10 @@
 6) Attach Action Queue
 	Some game code will not be runnable directly from the plugin and needs to run in the Unity code loop
 	In Main.cs there is an example harmony patch to attach to the update() function of some universal object
+
+
+ControlClient offers a few helper functions for hiding or disabling effects
+	HideEffect(string code)
+	ShowEffect(string code)
+	EnableEffect(string code)
+	DisableEffect(string code)

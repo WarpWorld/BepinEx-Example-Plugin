@@ -78,6 +78,38 @@ namespace BepinControl
             return true;
         }
 
+        public static void HideEffect(string code)
+        {
+            CrowdResponse res = new CrowdResponse(0, CrowdResponse.Status.STATUS_NOTVISIBLE);
+            res.type = 1;
+            res.code = code;
+            res.Send(Socket);
+        }
+
+        public static void ShowEffect(string code)
+        {
+            CrowdResponse res = new CrowdResponse(0, CrowdResponse.Status.STATUS_VISIBLE);
+            res.type = 1;
+            res.code = code;
+            res.Send(Socket);
+        }
+
+        public static void DisableEffect(string code)
+        {
+            CrowdResponse res = new CrowdResponse(0, CrowdResponse.Status.STATUS_NOTSELECTABLE);
+            res.type = 1;
+            res.code = code;
+            res.Send(Socket);
+        }
+
+        public static void EnableEffect(string code)
+        {
+            CrowdResponse res = new CrowdResponse(0, CrowdResponse.Status.STATUS_SELECTABLE);
+            res.type = 1;
+            res.code = code;
+            res.Send(Socket);
+        }
+
         private void ClientLoop()
         {
 
