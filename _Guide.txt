@@ -8,7 +8,7 @@
 3) Create Effect Functions
 	CrowdDelegates.cs contains the functions implementing effects, see the examples there for how to implement
 
-4) Create Timed Effects]
+4) Create Timed Effects
 	Timed effects work similarly to normal effects, but besides their start code in CrowdDelegates.cs their behavior must be defined in TimedEffects.cs
 	And they use an identifier also specified in TimedEffects.cs to perform their behviors in the addEffect, removeEffect, and tick functions there
 
