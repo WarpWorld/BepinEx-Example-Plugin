@@ -1,25 +1,9 @@
-﻿
-using DunGen;
-using GameNetcodeStuff;
-using LethalCompanyTestMod;
-using Newtonsoft.Json.Linq;
-using Steamworks.Data;
-using System;
-using System.Collections.Generic;
+﻿using System;
 using System.Reflection;
 using System.Threading;
-using System.Xml.Linq;
-using Unity.Netcode;
-using UnityEngine;
-using static System.Net.Mime.MediaTypeNames;
-using static UnityEngine.EventSystems.EventTrigger;
-using static UnityEngine.GraphicsBuffer;
 
-
-namespace BepinControl
+namespace CrowdControl
 {
-    public delegate CrowdResponse CrowdDelegate(ControlClient client, CrowdRequest req);
-
     public class CrowdDelegates
     {
 

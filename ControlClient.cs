@@ -20,17 +20,14 @@
  * USA
  */
 
-using LethalCompanyTestMod;
 using System;
 using System.Collections.Generic;
 using System.Globalization;
 using System.Net;
 using System.Net.Sockets;
 using System.Threading;
-using UnityEngine;
 
-
-namespace BepinControl
+namespace CrowdControl
 {
     public class ControlClient
     {

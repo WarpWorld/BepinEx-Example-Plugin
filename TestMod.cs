@@ -1,37 +1,11 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.IO;
-using System.Linq;
-using System.Net.NetworkInformation;
-using System.Runtime.CompilerServices;
-using System.Text;
-using System.Threading.Tasks;
+using System.Threading;
 using BepInEx;
 using BepInEx.Logging;
-using DunGen;
 using HarmonyLib;
-using UnityEngine;
-using UnityEngine.Assertions;
-using UnityEngine.Assertions.Must;
-using UnityEngine.SceneManagement;
-using Random = UnityEngine.Random;
-using Steamworks;
-using Steamworks.Data;
-using System.Collections;
-using System.Security.AccessControl;
-using GameNetcodeStuff;
-using BepInEx.Configuration;
-using System.Reflection;
-using Unity.Netcode;
-using static System.Net.Mime.MediaTypeNames;
-using Steamworks.Ugc;
-using System.Threading;
-using BepinControl;
-using System.Runtime.InteropServices;
-using System.Runtime.ConstrainedExecution;
-using System.Security.Cryptography;
 
-namespace LethalCompanyTestMod
+namespace CrowdControl
 {
     [BepInPlugin(modGUID, modName, modVersion)]
     public class TestMod : BaseUnityPlugin

@@ -1,10 +1,9 @@
 ﻿using System;
 using System.Net.Sockets;
 using System.Text;
-using LethalCompanyTestMod;
 using Newtonsoft.Json;
 
-namespace BepinControl
+namespace CrowdControl
 {
     public class CrowdResponse
     {
