@@ -1,378 +1,316 @@
-﻿/*
- * Nane: Crowd Control BepInEx Plugin
- * Copyright: © 2021 TerribleTable, © 2024 Warp World
- * License: GNU Lesser General Public License (LGPL) v3.0
- *
- * This library is free software; you can redistribute it and/or
- * modify it under the terms of the GNU Lesser General Public
- * License as published by the Free Software Foundation; either
- * version 3.0 of the License, or (at your option) any later version.
- *
- * This library is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
- * Lesser General Public License for more details.
- *
- * You should have received a copy of the GNU Lesser General Public
- * License along with this library; if not, write to the Free Software
- * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301
- * USA
- */
-
-using Newtonsoft.Json;
-using System.Collections.Concurrent;
+﻿using System.Collections.Concurrent;
 using System.Globalization;
-using System.Net;
 using System.Net.Sockets;
 using System.Text;
 using ConnectorLib.JSON;
-using CrowdControl.Common;
+using CrowdControl.Delegates;
+using CrowdControl.Delegates.Effects;
 using UnityEngine;
-using Effect = CrowdControl.Effects.Effect;
-using EffectRequest = ConnectorLib.JSON.EffectRequest;
-using EffectResponse = ConnectorLib.JSON.EffectResponse;
-using EffectStatus = ConnectorLib.JSON.EffectStatus;
-using Socket = System.Net.Sockets.Socket;
 
 namespace CrowdControl;
 
+/// <summary>
+/// Crowd Control client connection service object.
+/// </summary>
 public class ControlClient : IDisposable
 {
+    /// <summary>Crowd Control client IP or hostname.</summary>
     public static readonly string CV_HOST = "127.0.0.1";
+
+    /// <summary>Crowd Control client port.</summary>
+    /// <remarks>This needs to be set in the pack CS file.</remarks>
     public static readonly int CV_PORT = 51337;
 
-    public readonly ConcurrentDictionary<string, Effect> Effects = new();
+    private TcpClient? m_client;
+    private DelimitedStreamReader? m_streamReader;
 
-    private IPEndPoint Endpoint { get; } = new(IPAddress.Parse(CV_HOST), CV_PORT);
-    private Socket? _socket;
+    private readonly CCMod m_mod;
 
-    private readonly TestMod _mod;
+    private readonly ConcurrentQueue<EffectRequest> m_requestQueue;
 
-    private readonly ConcurrentQueue<Action> _update_queue = new();
-    private readonly ConcurrentQueue<Action> _draw_queue = new();
+    private readonly CancellationTokenSource m_quitting = new();
 
-    private volatile bool _running;
-    public bool IsRunning() => _running;
-
-    public bool Paused { get; private set; }
-
-    public PlayerInfo? PlayerInfo { get; private set; }
-
+    //dispose of the websocket when the client is destroyed
     ~ControlClient() => Dispose(false);
 
-    public ControlClient(TestMod mod) => _mod = mod;
+    // ReSharper disable once NotAccessedField.Local
+    private readonly Thread m_readLoop;
+    private readonly Thread m_maintenanceLoop;
 
+    /// <summary>Disposes of the client connection.</summary>
     public void Dispose() => Dispose(true);
-    protected void Dispose(bool disposing)
+
+    /// <summary>Disposes of the client connection.</summary>
+    /// <param name="disposing">True if this is being called from a disposer, false if the call is from a finalizer.</param>
+    protected virtual void Dispose(bool disposing)
     {
-        _running = false;
-        try { _socket?.Dispose(); }
+        try { m_client?.Dispose(); }
         catch {/**/}
+        try { m_quitting.Cancel(); }
+        catch {/**/}
+        GC.SuppressFinalize(this);
     }
 
-    public void UpdateTick()
-    {
-        try { while (_update_queue.TryDequeue(out Action action)) action(); }
-        catch (Exception e) { TestMod.LogError(e); }
+    /// <summary>True if the game is connected to the Crowd Control client, false otherwise.</summary>
+    public bool Connected => m_client?.Connected ?? false;
 
-        foreach (Effect effect in Effects.Values)
-            try { if (effect.Active) effect.Update(); }
-            catch (Exception e) { TestMod.LogError(e); }
+    /// <summary>Creates a new Crowd Control client connection service object.</summary>
+    /// <param name="mod"></param>
+    public ControlClient(CCMod mod)
+    {
+        m_mod = mod;
+        m_requestQueue = new();
+
+        (m_readLoop = new Thread(NetworkLoop)).Start();
+        (m_maintenanceLoop = new Thread(MaintenanceLoop)).Start();
     }
 
-    public void DrawTick()
+    /// <summary>Maintains a connection to the network stream. Passes control to <see cref="ClientLoop"/> while connected.</summary>
+    private void NetworkLoop()
     {
-        try { while (_draw_queue.TryDequeue(out Action action)) action(); }
-        catch (Exception e) { TestMod.LogError(e); }
-
-        foreach (Effect effect in Effects.Values)
-            try { if (effect.Active) effect.Draw(); }
-            catch (Exception e) { TestMod.LogError(e); }
-    }
-
-    public void ShowEffect(params string[] ids) => EffectUpdate(EffectStatus.Visible, ConnectorLib.JSON.EffectUpdate.IdentifierType.Effect, ids);
-    public void ShowEffect(EffectUpdate.IdentifierType idType, params string[] ids) => EffectUpdate(EffectStatus.Visible, idType, ids);
-        
-    public void HideEffect(params string[] ids) => EffectUpdate(EffectStatus.NotVisible, ConnectorLib.JSON.EffectUpdate.IdentifierType.Effect, ids);
-    public void HideEffect(EffectUpdate.IdentifierType idType, params string[] ids) => EffectUpdate(EffectStatus.NotVisible, idType, ids);
-        
-    public void EnableEffect(params string[] ids) => EffectUpdate(EffectStatus.Selectable, ConnectorLib.JSON.EffectUpdate.IdentifierType.Effect, ids);
-    public void EnableEffect(EffectUpdate.IdentifierType idType, params string[] ids) => EffectUpdate(EffectStatus.Selectable, idType, ids);
-
-    public void DisableEffect(params string[] ids) => EffectUpdate(EffectStatus.NotSelectable, ConnectorLib.JSON.EffectUpdate.IdentifierType.Effect, ids);
-    public void DisableEffect(EffectUpdate.IdentifierType idType, params string[] ids) => EffectUpdate(EffectStatus.NotSelectable, idType, ids);
-        
-    public void EffectUpdate(EffectStatus effectStatus, params string[] ids) => EffectUpdate(effectStatus, ConnectorLib.JSON.EffectUpdate.IdentifierType.Effect, ids);
-    public void EffectUpdate(EffectStatus effectStatus, EffectUpdate.IdentifierType idType, params string[] ids)
-        => TrySend(new EffectUpdate
+        Thread.CurrentThread.CurrentCulture = CultureInfo.InvariantCulture; //do not remove this - kat
+        while (!m_quitting.IsCancellationRequested)
         {
-            ids = ids,
-            idType = idType,
-            status = effectStatus
-        });
+            CCMod.mls.LogInfo("Attempting to connect to Crowd Control");
 
-    public async Task DoEvents()
-    {
-        try
-        {
-            _running = true;
-            await Task.WhenAll(
-                Task.Factory.StartNew(NetworkLoop, TaskCreationOptions.LongRunning),
-                Task.Factory.StartNew(KeepAlive, TaskCreationOptions.LongRunning)
-            );
-        }
-        catch (Exception e) { TestMod.LogError(e); }
-        finally { _running = false; }
-    }
-
-    public void Stop() => _running = false;
-
-    #region Networking
-
-    public async Task KeepAlive()
-    {
-        const int KEEPALIVE_INTERVAL = 2500; //2.5s
-        while (_running)
-        {
-            TrySend(SimpleJSONResponse.KeepAlive);
-            await Task.Delay(KEEPALIVE_INTERVAL);
-        }
-    }
-
-    /// <remarks>
-    /// This function will never throw any exceptions.
-    /// </remarks>
-    private async Task<bool> TrySend(SimpleJSONResponse message)
-    {
-        try
-        {
-            if (_socket == null) return false;
-
-            string json = JsonConvert.SerializeObject(message); //unavoidable intermediary string alloc here
-            int bufSize = Encoding.UTF8.GetByteCount(json) + 1;
-
-            byte[] outData = new byte[bufSize];
-            Encoding.UTF8.GetBytes(json, outData);
-            await _socket.SendAsync(outData, SocketFlags.None);
-
-            return true;
-        }
-        catch (Exception e)
-        {
-            TestMod.LogError(e);
-            return false;
-        }
-    }
-
-    public async Task Recieve()
-    {
-        //this could potentially get called a lot, so we try to keep down on allocations here
-        const int TCP_MAX_PACKET = 65536; //64kb - do not change this value
-
-        byte[] tcpBuf = new byte[TCP_MAX_PACKET];
-        List<byte> messageBuf = [];
-        int lastIndex = 0;
-
-        try
-        {
-            while (_running)
-            {
-                int read = await _socket.ReceiveAsync(tcpBuf, SocketFlags.None);
-                if (read <= 0) return;
-                messageBuf.AddRange(new ArraySegment<byte>(tcpBuf, 0, read));
-                // looping on this is a lot faster than looping on the socket
-                int i = lastIndex;
-                for (; i < messageBuf.Count; i++)
-                {
-                    if (messageBuf[i] != 0) continue;
-                    //at this point we have to alloc because it's time to build the message
-                    try
-                    {
-                        byte[] jBuf = new byte[i];
-                        messageBuf.CopyTo(0, jBuf, 0, i);
-                        SimpleJSONRequest? request = SimpleJSONRequest.Parse(Encoding.UTF8.GetString(jBuf));
-                        HandleRequest(request).Forget();
-                    }
-                    catch (Exception e) { TestMod.LogError(e); }
-                    finally
-                    {
-                        messageBuf.RemoveRange(0, i + 1);
-                        i = 0;
-                    }
-                }
-                lastIndex = i;
-            }
-        }
-        catch (Exception e) { TestMod.LogError(e); }
-    }
-
-    public async Task NetworkLoop()
-    {
-        Thread.CurrentThread.CurrentCulture = CultureInfo.InvariantCulture;
-        while (_running)
-        {
-
-            TestMod.LogInfo("Attempting to connect to Crowd Control");
             try
             {
-                _socket = new Socket(Endpoint.AddressFamily, SocketType.Stream, ProtocolType.Tcp);
-                _socket.SetSocketOption(SocketOptionLevel.Socket, SocketOptionName.KeepAlive, true);
-                await _socket.ConnectAsync(Endpoint);
-                await Recieve();
-                _socket.Close();
+                m_client = new();
+                m_client.Client.SetSocketOption(SocketOptionLevel.Socket, SocketOptionName.KeepAlive, true);
+                m_client.Client.SetSocketOption(SocketOptionLevel.Socket, SocketOptionName.ReuseAddress, true);
+                if (m_client.BeginConnect(CV_HOST, CV_PORT, null, null).AsyncWaitHandle.WaitOne(2000, true) &&
+                    m_client.Connected)
+                    ClientLoop();
+                else
+                    CCMod.mls.LogInfo("Failed to connect to Crowd Control");
             }
             catch (Exception e)
             {
-                _socket = null;
-                TestMod.LogInfo(e.GetType().Name);
-                TestMod.LogInfo("Failed to connect to Crowd Control");
+                CCMod.mls.LogError(e);
+                CCMod.mls.LogError("Failed to connect to Crowd Control");
             }
-
-            Thread.Sleep(10000);
+            finally
+            {
+                try { m_client?.Close(); }
+                catch {/**/}
+            }
+            Thread.Sleep(2000);
         }
     }
 
-    private async Task<bool> Respond(EffectRequest request, EffectStatus status, SITimeSpan? timeRemaining = null, string message = "")
+    /// <summary>Performs connection maintenance tasks.</summary>
+    private void MaintenanceLoop()
     {
+        Thread.CurrentThread.CurrentCulture = CultureInfo.InvariantCulture; //do not remove this - kat
+        while (!m_quitting.IsCancellationRequested)
+        {
+            try
+            {
+                if (m_client?.Connected ?? false)
+                    KeepAlive();
+            }
+            catch (Exception e) { CCMod.mls.LogError(e); }
+            Thread.Sleep(2000);
+        }
+    }
+
+    /// <summary>Reads from the network stream and processes messages.</summary>
+    private void ClientLoop()
+    {
+        m_streamReader = new(m_client!.GetStream());
+        CCMod.mls.LogInfo("Connected to Crowd Control");
+
         try
         {
-            return await TrySend(new EffectResponse
+            while (!m_quitting.IsCancellationRequested)
             {
-                id = request.id,
-                status = status,
-                timeRemaining = ((long?)timeRemaining?.TotalMilliseconds) ?? 0L,
-                message = message,
-                type = ResponseType.EffectRequest
-            });
+                string message = m_streamReader.ReadUntilNullTerminator();
+                OnMessage(message.Trim());
+            }
+        }
+        catch (EndOfStreamException)
+        {
+            CCMod.mls.LogInfo("Disconnected from Crowd Control");
+            m_client?.Close();
         }
         catch (Exception e)
         {
-            TestMod.LogError(e);
+            CCMod.mls.LogError(e);
+            m_client?.Close();
+        }
+    }
+
+    /// <summary>Processes a single network message.</summary>
+    private void OnMessage(string message)
+    {
+        if (string.IsNullOrWhiteSpace(message)) return;
+        try
+        {
+            if (!SimpleJSONRequest.TryParse(message, out SimpleJSONRequest? req)) return;
+            switch (req?.type)
+            {
+                case RequestType.EffectTest when (req is EffectRequest er):
+                    {
+                        er.code ??= string.Empty;
+                        if (!EffectLoader.Delegates.ContainsKey(er.code))
+                        {
+                            Send(new EffectResponse(er.id, EffectStatus.Unavailable, StandardErrors.UnknownEffect));
+                            CCMod.mls.LogError(StandardErrors.UnknownEffect);
+                            return;
+                        }
+                        Send(new EffectResponse(er.id, m_mod.GameStateManager.IsReady(er.code) ? EffectStatus.Success : EffectStatus.Failure));
+                    }
+                    break;
+                case RequestType.EffectStart when (req is EffectRequest er):
+                    {
+                        er.code ??= string.Empty;
+                        if (!EffectLoader.Delegates.ContainsKey(er.code))
+                        {
+                            Send(new EffectResponse(er.id, EffectStatus.Unavailable, StandardErrors.UnknownEffect));
+                            CCMod.mls.LogError(StandardErrors.UnknownEffect);
+                            return;
+                        }
+                        m_requestQueue.Enqueue(er);
+                    }
+                    break;
+                case RequestType.EffectStop:
+                    break;
+                case RequestType.GameUpdate:
+                    m_mod.GameStateManager.UpdateGameState(true);
+                    break;
+            }
+        }
+        catch (Exception ex)
+        {
+            CCMod.mls.LogError(ex);
+        }
+    }
+
+    public void FixedUpdate()
+    {
+        //Log.Message(_game_status_update_timer);
+        _game_status_update_timer += Time.fixedDeltaTime;
+        if (_game_status_update_timer >= GAME_STATUS_UPDATE_INTERVAL)
+        {
+            m_mod.GameStateManager.UpdateGameState();
+            _game_status_update_timer = 0f;
+        }
+
+        while (m_requestQueue.TryDequeue(out var er))
+        {
+            if (!m_mod.GameStateManager.IsReady(er.code!))
+            {
+                Send(new EffectResponse(er.id, EffectStatus.Retry));
+                return;
+            }
+
+            if (!EffectLoader.Delegates.TryGetValue(er.code!, out var eDel)) continue;
+
+            EffectResponse res = eDel.Invoke(this, er);
+            res.metadata = new();
+            foreach (string key in MetadataDelegates.CommonMetadata)
+            {
+                if (MetadataDelegates.Metadata.TryGetValue(key, out MetadataDelegate? del))
+                    res.metadata.Add(key, del.Invoke(this));
+                else
+                    CCMod.mls.LogError($"Metadata delegate \"{key}\" could not be found. Available delegates: {string.Join(", ", MetadataDelegates.Metadata.Keys)}");
+            }
+            Send(res);
+        }
+    }
+
+    /// <summary>
+    /// Sends a response message to the Crowd Control client.
+    /// </summary>
+    /// <param name="response">The response object to send.</param>
+    /// <returns>True if the message was sent successfully, false otherwise.</returns>
+    public bool Send(SimpleJSONResponse response)
+    {
+        try
+        {
+            if (!Connected) return false;
+            byte[] bytes = [.. Encoding.UTF8.GetBytes(response.Serialize()), 0];
+            m_client!.GetStream().Write(bytes, 0, bytes.Length);
+            return true;
+        }
+        catch (Exception e)
+        {
+            CCMod.mls.LogError($"Error sending a message to the Crowd Control client: {e}");
             return false;
         }
     }
 
-    #endregion
-
-    #region Handlers
-
-    private async Task<bool> HandleRequest(SimpleJSONRequest request)
+    /// <summary>
+    /// Hides the specified effects on the menu.
+    /// </summary>
+    /// <param name="codes">The effect IDs to hide.</param>
+    /// <returns>True if the message was sent successfully, false otherwise.</returns>
+    public bool HideEffects(params string[] codes)
     {
-        if (request.IsKeepAlive) return true;
-        switch (request.type) 
-        {
-            case RequestType.Test:
-                return await OnTest((EffectRequest)request);
-            case RequestType.Start:
-                return await OnRequest((EffectRequest)request);
-            case RequestType.Stop:
-                return await OnStop((EffectRequest)request);
-            case RequestType.PlayerInfo:
-                PlayerInfo = (PlayerInfo)request;
-                return true;
-        }
-        return false;
+        EffectUpdate res = new(codes, EffectStatus.NotVisible);
+        return Send(res);
     }
 
-    private async Task<bool> OnTest(EffectRequest request)
+    /// <summary>
+    /// Shows the specified effects on the menu.
+    /// </summary>
+    /// <param name="codes">The effect IDs to show.</param>
+    /// <returns>True if the message was sent successfully, false otherwise.</returns>
+    public bool ShowEffects(params string[] codes)
     {
-        TestMod.LogDebug($"Got an effect request [{request.id}:{request.code}].");
-        if (string.IsNullOrWhiteSpace(request.code)) return false;
-
-        if (!Effects.TryGetValue(request.code, out Effect effect))
-        {
-            TestMod.LogError($"Effect {request.code} not found.");
-            //could not find the effect
-            return await Respond(request, EffectStatus.Unavailable);
-        }
-
-#pragma warning disable CS0618 // Type or member is obsolete
-        if (effect.Type == Effect.EffectType.BidWar)
-            return await Respond(request, EffectStatus.Unavailable, null, "Bid wars are not supported in Crowd Control 2.");
-#pragma warning restore CS0618 // Type or member is obsolete
-
-        if (!effect.IsReady())
-            return await Respond(request, EffectStatus.Retry);
-
-        TestMod.LogDebug($"Effect {request.code} started.");
-        return await Respond(request, EffectStatus.Success, ((effect.Type == Effect.EffectType.Timed) ? effect.Duration : (SITimeSpan?)null));
+        EffectUpdate res = new(codes, EffectStatus.Visible);
+        return Send(res);
     }
 
-    private async Task<bool> OnStop(EffectRequest request)
+    /// <summary>
+    /// Makes the specified effects unselectable on the menu.
+    /// </summary>
+    /// <param name="codes">The effect IDs to make unselectable.</param>
+    /// <returns>True if the message was sent successfully, false otherwise.</returns>
+    public bool DisableEffects(params IEnumerable<string> codes)
     {
-        TestMod.LogDebug($"Got an effect request [{request.id}:{request.code}].");
-        if (string.IsNullOrWhiteSpace(request.code))
-        {
-            StopAllEffects();
-            return true;
-        }
-
-        if (!Effects.TryGetValue(request.code, out Effect effect))
-        {
-            TestMod.LogError($"Effect {request.code} not found.");
-            //could not find the effect
-            return await Respond(request, EffectStatus.Unavailable);
-        }
-
-#pragma warning disable CS0618 // Type or member is obsolete
-        if (effect.Type == Effect.EffectType.BidWar)
-            return await Respond(request, EffectStatus.Unavailable, null, "Bid wars are not supported in Crowd Control 2.");
-#pragma warning restore CS0618 // Type or member is obsolete
-
-        if (!effect.TryStop())
-            return await Respond(request, EffectStatus.Retry);
-
-        TestMod.LogDebug($"Effect {request.code} started.");
-        return await Respond(request, EffectStatus.Success, ((effect.Type == Effect.EffectType.Timed) ? effect.Duration : (SITimeSpan?)null));
+        EffectUpdate res = new(codes, EffectStatus.NotSelectable);
+        return Send(res);
     }
 
-    private async Task<bool> OnRequest(EffectRequest request)
+    /// <summary>
+    /// Makes the specified effects selectable on the menu.
+    /// </summary>
+    /// <param name="codes">The effect IDs to make selectable.</param>
+    /// <returns>True if the message was sent successfully, false otherwise.</returns>
+    public bool EnableEffects(params IEnumerable<string> codes)
     {
-        TestMod.LogDebug($"Got an effect request [{request.id}:{request.code}].");
-        if (string.IsNullOrWhiteSpace(request.code)) return false;
-
-        if (!Effects.TryGetValue(request.code, out Effect effect))
-        {
-            TestMod.LogError($"Effect {request.code} not found.");
-            //could not find the effect
-            return await Respond(request, EffectStatus.Unavailable);
-        }
-
-        int len = effect.ParameterTypes.Length;
-        ParameterResults? parameters = request.parameters as ParameterResults;
-
-        if ((parameters?.Count ?? 0) < len)
-        {
-            return await Respond(request, EffectStatus.Failure);
-        }
-
-        object[] p = new object[len];
-        for (int i = 0; i < len; i++)
-        {
-            p[i] = Convert.ChangeType(parameters[parameters[i]].Value, effect.ParameterTypes[i]);
-        }
-
-#pragma warning disable CS0618 // Type or member is obsolete
-        if (effect.Type == Effect.EffectType.BidWar)
-        {
-            return await Respond(request, EffectStatus.Unavailable, null, "Bid wars are not supported in Crowd Control 2.");
-        }
-#pragma warning restore CS0618 // Type or member is obsolete
-
-        if (!effect.TryStart(p))
-        {
-            //Log.Debug($"Effect {request.code} could not start.");
-            return await Respond(request, EffectStatus.Retry);
-        }
-
-        TestMod.LogDebug($"Effect {request.code} started.");
-        return await Respond(request, EffectStatus.Success, ((effect.Type == Effect.EffectType.Timed) ? effect.Duration : (SITimeSpan?)null));
+        EffectUpdate res = new(codes, EffectStatus.Selectable);
+        return Send(res);
     }
 
-    public void StopAllEffects()
+    /// <summary>
+    /// Closes the connection to the Crowd Control client.
+    /// </summary>
+    public void Stop() => m_client?.Close();
+
+    /// <summary>
+    /// Closes the connection to the Crowd Control client.
+    /// </summary>
+    /// <param name="message">The reason message to send to the client prior to disconnection.</param>
+    public void Stop(string message)
     {
-        foreach (Effect effect in Effects.Values) effect.TryStop();
+        Send(new MessageResponse()
+        {
+            type = ResponseType.Disconnect,
+            message = message
+        });
+        m_client?.Close();
     }
 
-    #endregion
+    private static readonly EmptyResponse KEEPALIVE = new() { type = ResponseType.KeepAlive };
+
+    /// <summary>
+    /// Sends a keepalive message to the Crowd Control client.
+    /// </summary>
+    /// <returns>True if the message was sent successfully, false otherwise.</returns>
+    public bool KeepAlive() => Send(KEEPALIVE);
+
+    private const float GAME_STATUS_UPDATE_INTERVAL = 1f;
+    private float _game_status_update_timer;
 }
