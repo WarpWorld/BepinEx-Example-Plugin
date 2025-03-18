@@ -8,15 +8,17 @@ namespace CrowdControl.Delegates.Effects;
 public static class EffectLoader
 {
     private const BindingFlags BINDING_FLAGS = BindingFlags.Static | BindingFlags.Public | BindingFlags.NonPublic;
-
-    /*
-     * this does not need to be explicitly filled out, it is done automatically
-     * by reflection in the static constructor
-     *
-     * just make sure to add the [Effect] attribute to your methods
-     */
+    
+    /// <summary>Provides a mapping of effect IDs to their respective delegates.</summary>
+    /// <remarks>
+    /// This should not need to be explicitly filled out, it is done automatically via reflection in the static constructor.
+    /// Just make sure to add the [Effect] attribute to your methods.
+    /// </remarks>
     public static readonly Dictionary<string, EffectDelegate> Delegates = new();
 
+    /// <summary>
+    /// Automatically loads all effect delegates from the assembly.
+    /// </summary>
     static EffectLoader()
     {
         foreach (Type type in Assembly.GetExecutingAssembly().GetTypes())
@@ -37,15 +39,15 @@ public static class EffectLoader
                                 }
                                 catch (Exception e)
                                 {
-                                    CCMod.mls.LogError(e);
+                                    CCMod.Instance.Logger.LogError(e);
                                 }
                             }
                         }
                     }
-                    catch {/**/}
+                    catch { /**/ }
                 }
             }
-            catch {/**/}
+            catch { /**/ }
         }
     }
 }

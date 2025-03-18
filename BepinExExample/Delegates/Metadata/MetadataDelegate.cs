@@ -1,6 +1,6 @@
 ﻿using ConnectorLib.JSON;
 
-namespace CrowdControl.Delegates;
+namespace CrowdControl.Delegates.Metadata;
 
 /// <summary>
 /// Represents a delegate that returns the metadata for an effect response.

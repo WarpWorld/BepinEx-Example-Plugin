@@ -49,7 +49,7 @@ public class EffectDelegates
         catch (Exception e)
         {
             status = EffectStatus.Retry;
-            CCMod.mls.LogInfo($"Crowd Control Error: {e}");
+            CCMod.Instance.Logger.LogInfo($"Crowd Control Error: {e}");
         }
 
         return new(req.ID, status, message);
@@ -71,7 +71,7 @@ public class EffectDelegates
         catch (Exception e)
         {
             status = EffectStatus.Retry;
-            CCMod.mls.LogInfo($"Crowd Control Error: {e}");
+            CCMod.Instance.Logger.LogInfo($"Crowd Control Error: {e}");
         }
 
         return new(req.ID, status, message);

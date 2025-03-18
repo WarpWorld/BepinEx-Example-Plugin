@@ -49,7 +49,7 @@ public class GameStateManager(CCMod mod)
         }
         catch (Exception e)
         {
-            CCMod.mls.LogError($"ERROR {e}");
+            CCMod.Instance.Logger.LogError($"ERROR {e}");
             return ConnectorLib.JSON.GameState.Error;
         }
     }

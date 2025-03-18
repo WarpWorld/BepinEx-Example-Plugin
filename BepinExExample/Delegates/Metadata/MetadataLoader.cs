@@ -1,11 +1,11 @@
 ﻿using System.Reflection;
 
-namespace CrowdControl.Delegates;
+namespace CrowdControl.Delegates.Metadata;
 
 /// <summary>
 /// A metadata delegate container.
 /// </summary>
-public static class MetadataDelegates
+public static class MetadataLoader
 {
     public static readonly string[] CommonMetadata = ["levelTime"];
 
@@ -19,7 +19,7 @@ public static class MetadataDelegates
      */
     public static readonly Dictionary<string, MetadataDelegate> Metadata = new();
 
-    static MetadataDelegates()
+    static MetadataLoader()
     {
         foreach (Type type in Assembly.GetExecutingAssembly().GetTypes())
         {
@@ -39,7 +39,7 @@ public static class MetadataDelegates
                                 }
                                 catch (Exception e)
                                 {
-                                    CCMod.mls.LogError(e);
+                                    CCMod.Instance.Logger.LogError(e);
                                 }
                             }
                         }

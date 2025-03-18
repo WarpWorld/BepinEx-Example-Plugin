@@ -1,8 +1,6 @@
-﻿namespace CrowdControl.Delegates;
+﻿namespace CrowdControl.Delegates.Metadata;
 
-/// <summary>
-/// Attribute used to mark a method as metadata with the specified IDs.
-/// </summary>
+/// <summary> Attribute used to mark a method as metadata with the specified IDs.</summary>
 [AttributeUsage(AttributeTargets.Method)]
 public class MetadataAttribute(params string[] ids) : Attribute
 {

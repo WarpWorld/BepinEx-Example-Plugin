@@ -5,6 +5,7 @@ using System.Text;
 using ConnectorLib.JSON;
 using CrowdControl.Delegates;
 using CrowdControl.Delegates.Effects;
+using CrowdControl.Delegates.Metadata;
 using UnityEngine;
 
 namespace CrowdControl;
@@ -71,7 +72,7 @@ public class ControlClient : IDisposable
         Thread.CurrentThread.CurrentCulture = CultureInfo.InvariantCulture; //do not remove this - kat
         while (!m_quitting.IsCancellationRequested)
         {
-            CCMod.mls.LogInfo("Attempting to connect to Crowd Control");
+            CCMod.Instance.Logger.LogInfo("Attempting to connect to Crowd Control");
 
             try
             {
@@ -82,12 +83,12 @@ public class ControlClient : IDisposable
                     m_client.Connected)
                     ClientLoop();
                 else
-                    CCMod.mls.LogInfo("Failed to connect to Crowd Control");
+                    CCMod.Instance.Logger.LogInfo("Failed to connect to Crowd Control");
             }
             catch (Exception e)
             {
-                CCMod.mls.LogError(e);
-                CCMod.mls.LogError("Failed to connect to Crowd Control");
+                CCMod.Instance.Logger.LogError(e);
+                CCMod.Instance.Logger.LogError("Failed to connect to Crowd Control");
             }
             finally
             {
@@ -109,7 +110,7 @@ public class ControlClient : IDisposable
                 if (m_client?.Connected ?? false)
                     KeepAlive();
             }
-            catch (Exception e) { CCMod.mls.LogError(e); }
+            catch (Exception e) { CCMod.Instance.Logger.LogError(e); }
             Thread.Sleep(2000);
         }
     }
@@ -118,7 +119,7 @@ public class ControlClient : IDisposable
     private void ClientLoop()
     {
         m_streamReader = new(m_client!.GetStream());
-        CCMod.mls.LogInfo("Connected to Crowd Control");
+        CCMod.Instance.Logger.LogInfo("Connected to Crowd Control");
 
         try
         {
@@ -130,17 +131,18 @@ public class ControlClient : IDisposable
         }
         catch (EndOfStreamException)
         {
-            CCMod.mls.LogInfo("Disconnected from Crowd Control");
+            CCMod.Instance.Logger.LogInfo("Disconnected from Crowd Control");
             m_client?.Close();
         }
         catch (Exception e)
         {
-            CCMod.mls.LogError(e);
+            CCMod.Instance.Logger.LogError(e);
             m_client?.Close();
         }
     }
 
     /// <summary>Processes a single network message.</summary>
+    /// <param name="message">A JSON-formatted message body.</param>
     private void OnMessage(string message)
     {
         if (string.IsNullOrWhiteSpace(message)) return;
@@ -155,7 +157,7 @@ public class ControlClient : IDisposable
                         if (!EffectLoader.Delegates.ContainsKey(er.code))
                         {
                             Send(new EffectResponse(er.id, EffectStatus.Unavailable, StandardErrors.UnknownEffect));
-                            CCMod.mls.LogError(StandardErrors.UnknownEffect);
+                            CCMod.Instance.Logger.LogError(StandardErrors.UnknownEffect);
                             return;
                         }
                         Send(new EffectResponse(er.id, m_mod.GameStateManager.IsReady(er.code) ? EffectStatus.Success : EffectStatus.Failure));
@@ -167,7 +169,7 @@ public class ControlClient : IDisposable
                         if (!EffectLoader.Delegates.ContainsKey(er.code))
                         {
                             Send(new EffectResponse(er.id, EffectStatus.Unavailable, StandardErrors.UnknownEffect));
-                            CCMod.mls.LogError(StandardErrors.UnknownEffect);
+                            CCMod.Instance.Logger.LogError(StandardErrors.UnknownEffect);
                             return;
                         }
                         m_requestQueue.Enqueue(er);
@@ -182,10 +184,12 @@ public class ControlClient : IDisposable
         }
         catch (Exception ex)
         {
-            CCMod.mls.LogError(ex);
+            CCMod.Instance.Logger.LogError(ex);
         }
     }
 
+    /// <summary>Performs all game state updates including the firing of effects.</summary>
+    /// <remarks>This function is called on the main game thread. Blocking here may cause lag or crash the game entirely.</remarks>
     public void FixedUpdate()
     {
         //Log.Message(_game_status_update_timer);
@@ -208,12 +212,12 @@ public class ControlClient : IDisposable
 
             EffectResponse res = eDel.Invoke(this, er);
             res.metadata = new();
-            foreach (string key in MetadataDelegates.CommonMetadata)
+            foreach (string key in MetadataLoader.CommonMetadata)
             {
-                if (MetadataDelegates.Metadata.TryGetValue(key, out MetadataDelegate? del))
+                if (MetadataLoader.Metadata.TryGetValue(key, out MetadataDelegate? del))
                     res.metadata.Add(key, del.Invoke(this));
                 else
-                    CCMod.mls.LogError($"Metadata delegate \"{key}\" could not be found. Available delegates: {string.Join(", ", MetadataDelegates.Metadata.Keys)}");
+                    CCMod.Instance.Logger.LogError($"Metadata delegate \"{key}\" could not be found. Available delegates: {string.Join(", ", MetadataLoader.Metadata.Keys)}");
             }
             Send(res);
         }
@@ -235,7 +239,7 @@ public class ControlClient : IDisposable
         }
         catch (Exception e)
         {
-            CCMod.mls.LogError($"Error sending a message to the Crowd Control client: {e}");
+            CCMod.Instance.Logger.LogError($"Error sending a message to the Crowd Control client: {e}");
             return false;
         }
     }

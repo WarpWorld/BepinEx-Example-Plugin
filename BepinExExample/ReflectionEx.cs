@@ -2,9 +2,11 @@
 
 namespace CrowdControl;
 
-/// <summary>
-/// Provides extension methods for performing reflection operations.
-/// </summary>
+/// <summary>Provides extension methods for performing reflection operations.</summary>
+/// <remarks>
+/// These helpers are mostly for accessing nonpublic fields, properties, and methods.
+/// They may be useful depending on the specific game and modding framework.
+/// </remarks>
 internal static class ReflectionEx
 {
     private const BindingFlags BINDING_FLAGS =

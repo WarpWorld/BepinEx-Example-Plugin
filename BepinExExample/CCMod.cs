@@ -17,10 +17,13 @@ public class CCMod : BaseUnityPlugin
 
     private readonly HarmonyLib.Harmony harmony = new(modGUID);
 
-    public static ManualLogSource mls;
+    /// <summary>The logger for the mod.</summary>
+    public new ManualLogSource Logger => base.Logger;
 
+    /// <summary>The singleton instance of the game mod.</summary>
     internal static CCMod Instance;
 
+    /// <summary>The game state manager object.</summary>
     public GameStateManager GameStateManager;
 
     /// <summary>
@@ -35,13 +38,12 @@ public class CCMod : BaseUnityPlugin
     void Awake()
     {
         Instance = this;
-        mls = BepInEx.Logging.Logger.CreateLogSource("Crowd Control");
 
-        mls.LogInfo($"Loaded {modGUID}. Patching.");
+        Logger.LogInfo($"Loaded {modGUID}. Patching.");
         harmony.PatchAll(typeof(CCMod));
         harmony.PatchAll();
 
-        mls.LogInfo("Initializing Crowd Control");
+        Logger.LogInfo("Initializing Crowd Control");
 
         try
         {
@@ -50,17 +52,14 @@ public class CCMod : BaseUnityPlugin
         }
         catch (Exception e)
         {
-            mls.LogError($"CC Init Error: {e}");
+            Logger.LogError($"CC Init Error: {e}");
         }
 
-        mls.LogInfo("Crowd Control Initialized");
-
-        mls = Logger;
+        Logger.LogInfo("Crowd Control Initialized");
     }
 
-    /// <summary>
-    /// Called every fixed frame update.
-    /// </summary>
+    /// <summary>Called every fixed frame (physics) update.</summary>
+    /// <remarks>This function is called on the main game thread. Blocking here may cause lag or crash the game entirely.</remarks>
     void FixedUpdate()
     {
         if (ActionQueue.Count > 0)

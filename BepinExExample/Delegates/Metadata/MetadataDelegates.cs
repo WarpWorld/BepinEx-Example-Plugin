@@ -24,7 +24,7 @@ public static class MetadataDelegates
         }
         catch (Exception e)
         {
-            CCMod.mls.LogError($"Crowd Control Error: {e}");
+            CCMod.Instance.Logger.LogError($"Crowd Control Error: {e}");
             return DataResponse.Failure(KEY, e, "The plugin encountered an internal error. Check the game logs for more information.");
         };
     }
