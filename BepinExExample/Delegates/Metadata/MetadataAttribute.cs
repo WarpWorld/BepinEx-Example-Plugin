@@ -8,4 +8,8 @@ public class MetadataAttribute(params string[] ids) : Attribute
     /// Gets the IDs associated with the metadata.
     /// </summary>
     public string[] IDs { get; } = ids;
+    
+    public MetadataAttribute(string ids) : this([ids]) { }
+    
+    public MetadataAttribute(params IEnumerable<string> ids) : this(ids.ToArray()) { }
 }

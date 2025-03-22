@@ -20,7 +20,7 @@ internal static class ReflectionEx
     /// <param name="val">The value to set.</param>
     public static void SetField(this object obj, string prop, object val)
     {
-        var f = obj.GetType().GetField(prop, BINDING_FLAGS);
+        FieldInfo? f = obj.GetType().GetField(prop, BINDING_FLAGS);
         f.SetValue(obj, val);
     }
 
@@ -33,7 +33,7 @@ internal static class ReflectionEx
     /// <returns>The value of the field.</returns>
     public static T GetField<T>(this object obj, string prop)
     {
-        var f = obj.GetType().GetField(prop, BINDING_FLAGS);
+        FieldInfo? f = obj.GetType().GetField(prop, BINDING_FLAGS);
         return (T)f.GetValue(obj);
     }
 
@@ -45,7 +45,7 @@ internal static class ReflectionEx
     /// <param name="val">The value to set.</param>
     public static void SetProperty(this object obj, string prop, object val)
     {
-        var f = obj.GetType().GetField(prop, BINDING_FLAGS);
+        FieldInfo? f = obj.GetType().GetField(prop, BINDING_FLAGS);
         f.SetValue(obj, val);
     }
 
@@ -58,7 +58,7 @@ internal static class ReflectionEx
     /// <returns>The value of the property.</returns>
     public static T GetProperty<T>(this object obj, string prop)
     {
-        var f = obj.GetType().GetField(prop, BINDING_FLAGS);
+        FieldInfo? f = obj.GetType().GetField(prop, BINDING_FLAGS);
         return (T)f.GetValue(obj);
     }
 
@@ -70,7 +70,7 @@ internal static class ReflectionEx
     /// <param name="vals">The arguments to pass to the method.</param>
     public static void CallMethod(this object obj, string methodName, params object[] vals)
     {
-        var p = obj.GetType().GetMethod(methodName, BINDING_FLAGS);
+        MethodInfo? p = obj.GetType().GetMethod(methodName, BINDING_FLAGS);
         p.Invoke(obj, vals);
     }
 
@@ -84,7 +84,7 @@ internal static class ReflectionEx
     /// <returns>The result of the method.</returns>
     public static T CallMethod<T>(this object obj, string methodName, params object[] vals)
     {
-        var p = obj.GetType().GetMethod(methodName, BINDING_FLAGS);
+        MethodInfo? p = obj.GetType().GetMethod(methodName, BINDING_FLAGS);
         return (T)p.Invoke(obj, vals);
     }
 }

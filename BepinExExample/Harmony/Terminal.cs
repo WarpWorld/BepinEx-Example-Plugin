@@ -23,9 +23,9 @@ public static class Terminal
             MethodInfo addLineMethod = terminalType.GetMethod("AddLine", BindingFlags.NonPublic | BindingFlags.Static);
             if (addLineMethod != null)
             {
-                object[] ccVersion = { CCMod.modName + " " + CCMod.modVersion, Color.green };
-                Color statusColor = CCMod.Instance.ClientConnected ? Color.green : Color.red;
-                object[] ccStatus = { "Connected:" + CCMod.Instance.ClientConnected, statusColor };
+                object[] ccVersion = { CrowdControlMod.MOD_NAME + " " + CrowdControlMod.MOD_VERSION, Color.green };
+                Color statusColor = CrowdControlMod.Instance.ClientConnected ? Color.green : Color.red;
+                object[] ccStatus = { "Connected:" + CrowdControlMod.Instance.ClientConnected, statusColor };
                 addLineMethod.Invoke(null, ccVersion);
                 addLineMethod.Invoke(null, ccStatus);
             }
@@ -42,7 +42,7 @@ public static class Terminal
                 addLineMethod.Invoke(null, addLineParams);
             }
             
-            CCMod.Instance.GameStateManager.EnableAllEffects();
+            CrowdControlMod.Instance.Client.EnableAllEffects();
             return false;
         }
         return true;

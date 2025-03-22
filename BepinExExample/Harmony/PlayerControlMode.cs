@@ -19,9 +19,9 @@ public static class PlayerControlMode
     {
         if (__result != null && __result.name == "Gameplay")
         {
-            if (CCMod.Instance.GameStateManager.IsActiveInConversation)
+            if (CrowdControlMod.Instance.GameStateManager.IsActiveInConversation)
             {
-                CCMod.Instance.GameStateManager.IsActiveInConversation = false;
+                CrowdControlMod.Instance.GameStateManager.IsActiveInConversation = false;
             }
         }
     }
@@ -32,9 +32,9 @@ public static class PlayerControlMode
     {
         if (__result != null && __result.name == "Conversation")
         {
-            if (!CCMod.Instance.GameStateManager.IsActiveInConversation)
+            if (!CrowdControlMod.Instance.GameStateManager.IsActiveInConversation)
             {
-                CCMod.Instance.GameStateManager.IsActiveInConversation = true;
+                CrowdControlMod.Instance.GameStateManager.IsActiveInConversation = true;
             }
         }
     }

@@ -1,15 +1,39 @@
 ﻿using System.Runtime.CompilerServices;
 using ConnectorLib.JSON;
-using CrowdControl.Delegates.Effects;
 using Framework;
+using UnityEngine;
 
 namespace CrowdControl;
 
-public class GameStateManager(CCMod mod)
+public class GameStateManager(CrowdControlMod mod)
 {
     //Everything in the game-specific region will need to be changed for each game
     
     #region Game-Specific Code
+    
+    //Some of the effect functions call this to display a message to the player so we've included that as a helper here
+    //You can change this to use your own dialog system if you have one or remove it if you don't want to display messages
+    public static async Task DialogMsgAsync(string message, bool playSound)
+    {
+        TutorialText text = TutorialText.Instance;
+        if (!text) return;
+        //prevent dialog from overwriting game dialog
+        //may be a isReady check?
+        //if (text.CurrentPrompt) return;
+
+        LocalizedString localizedString = ScriptableObject.CreateInstance<LocalizedString>();
+        if (!localizedString) return;
+        localizedString.SetField("_englishText", message);
+
+        TutorialPrompt prompt = new();
+        if (!prompt) return;
+        prompt.Text = localizedString;
+        prompt.PlaySound = playSound;
+
+        text.SetPrompt(prompt);
+        await Task.Delay(2000);
+        text.ClearPrompt();
+    }
 
     //Anger Foot doesn't directly report this information, so we track it in Harmony.PlayerControlMode.cs and update it here
     //These can be added or removed as needed
@@ -49,7 +73,7 @@ public class GameStateManager(CCMod mod)
         }
         catch (Exception e)
         {
-            CCMod.Instance.Logger.LogError($"ERROR {e}");
+            CrowdControlMod.Instance.Logger.LogError($"ERROR {e}");
             return ConnectorLib.JSON.GameState.Error;
         }
     }
@@ -59,12 +83,6 @@ public class GameStateManager(CCMod mod)
     //Everything from here down is the same for every game - you probably don't need to change it
 
     #region General Code
-
-    /// <summary>Enables every effect in the mod.</summary>
-    public void EnableAllEffects() => mod.EnableEffects(EffectLoader.Delegates.Keys);
-
-    /// <summary>Disables every effect in the mod.</summary>
-    public void DisableAllEffects() => mod.DisableEffects(EffectLoader.Delegates.Keys);
 
     /// <summary>Reports the updated game state to the Crowd Control client.</summary>
     /// <param name="force">True to force the report to be sent, even if the state is the same as the previous state, false to only report the state if it has changed.</param>
@@ -91,7 +109,7 @@ public class GameStateManager(CCMod mod)
         if (force || (_last_game_state != newState))
         {
             _last_game_state = newState;
-            return mod.Send(new GameUpdate(newState, message));
+            return mod.Client.Send(new GameUpdate(newState, message));
         }
 
         return true;

@@ -2,13 +2,9 @@
 
 namespace CrowdControl.Delegates.Metadata;
 
-/// <summary>
-/// A metadata delegate container.
-/// </summary>
+/// <summary>A metadata delegate container.</summary>
 public static class MetadataLoader
 {
-    public static readonly string[] CommonMetadata = ["levelTime"];
-
     private const BindingFlags BINDING_FLAGS = BindingFlags.Static | BindingFlags.Public | BindingFlags.NonPublic;
 
     /*
@@ -39,7 +35,7 @@ public static class MetadataLoader
                                 }
                                 catch (Exception e)
                                 {
-                                    CCMod.Instance.Logger.LogError(e);
+                                    CrowdControlMod.Instance.Logger.LogError(e);
                                 }
                             }
                         }

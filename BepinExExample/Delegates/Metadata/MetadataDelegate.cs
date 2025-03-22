@@ -2,9 +2,7 @@
 
 namespace CrowdControl.Delegates.Metadata;
 
-/// <summary>
-/// Represents a delegate that returns the metadata for an effect response.
-/// </summary>
-/// <param name="client">The control client.</param>
-/// <returns>The effect response metadata.</returns>
-public delegate DataResponse MetadataDelegate(ControlClient client);
+/// <summary>Represents a delegate that returns the metadata for an effect response or direct metadata request.</summary>
+/// <param name="mod">The Crowd Control mod object.</param>
+/// <returns>The requested metadata.</returns>
+public delegate DataResponse MetadataDelegate(CrowdControlMod mod);

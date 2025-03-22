@@ -5,14 +5,15 @@ using Framework;
 //non-effect helper methods are allowed and encouraged - kat
 namespace CrowdControl.Delegates.Metadata;
 
-/// <summary>
-/// Contains the metadata delegates.
-/// </summary>
-/// <remarks>This entire file is game-specific and everything here (including the class itself) can be renamed or removed.</remarks>
+/// <summary>Contains the metadata delegates.</summary>
+/// <remarks>This entire file is game-specific and everything here (including the class itself) can be changed or removed.</remarks>
 public static class MetadataDelegates
 {
+    //everything in this list will be automatically included as metadata in every effect response
+    public static readonly string[] CommonMetadata = ["levelTime"];
+    
     [Metadata("levelTime")]
-    public static DataResponse LevelTime(ControlClient client)
+    public static DataResponse LevelTime(CrowdControlMod mod)
     {
         const string KEY = "levelTime";
         try
@@ -24,7 +25,7 @@ public static class MetadataDelegates
         }
         catch (Exception e)
         {
-            CCMod.Instance.Logger.LogError($"Crowd Control Error: {e}");
+            CrowdControlMod.Instance.Logger.LogError($"Crowd Control Error: {e}");
             return DataResponse.Failure(KEY, e, "The plugin encountered an internal error. Check the game logs for more information.");
         };
     }
