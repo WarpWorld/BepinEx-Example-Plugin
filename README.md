@@ -7,13 +7,11 @@ Instructions:
 	Add a reference to Assembly-CSharp from the game's data folders
 
 2) Create Effect Functions  
-	Delegates\Effects\CrowdDelegates.cs contains the functions implementing effects,
-	see the examples there for how to implement  
+	Delegates\Effects\Implementations\ contains the classes implementing effects,
+	See the examples for how to implement.
 
 3) Create Timed Effects  
-	Timed effects work similarly to normal effects, but besides their start code in Delegates\Effects\CrowdDelegates.cs,
-	additional behavior must be defined in Timed.cs  
-	And they use an identifier also specified in TimedEffects.cs to perform their behviors in the addEffect, removeEffect, and tick functions there  
+	Timed effects work similarly to normal effects, but additional behaviors must be defined in the effect class.
 
 4) Setup IsReady & UpdateGameState Functions  
 	GameStateManager.cs contains functions called IsReady and UpdateGameState.
@@ -22,10 +20,10 @@ Instructions:
 
 5) Attach Action Queue (Uncommon)
 	In rare cases, the FixedUpdate() method of the plugin is not called automatically as part of the standard game loop
-	In CCmod.cs there is an example harmony patch to attach to the update() function of some universal object
-	This should be used if and only if the FixedUpdate() method is not called automatically
+	In CrowdControlMod.cs there is an example harmony patch to attach to the FixedUpdate() function of some universal object.
+	This should be used if and only if the FixedUpdate() method is not called automatically.
 
-CCMod.Instance offers a few helper functions for hiding or disabling effects  
+CrowdControlMod.Instance offers a few helper functions for hiding or disabling effects  
 	HideEffect(params string[] code)  
 	ShowEffect(params string[] code)  
 	EnableEffect(params string[] code)  
