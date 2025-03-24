@@ -19,7 +19,8 @@ public class TimedEffectState
         NotStarted,
         Running,
         Paused,
-        Finished
+        Finished,
+        Errored
     }
 
     public EffectState State { get; private set; } = EffectState.NotStarted;
@@ -55,9 +56,18 @@ public class TimedEffectState
             while (locked = TryGetLock()) yield return null;
             if (State != EffectState.NotStarted) yield break;
 
-            response = Effect.Start(Request);
-            TimeRemaining = Duration;
-            State = EffectState.Running;
+            try
+            {
+                response = Effect.Start(Request);
+                TimeRemaining = Duration;
+                State = EffectState.Running;
+            }
+            catch (Exception e)
+            {
+                response = EffectResponse.Failure(Request.id, StandardErrors.ExceptionThrown);
+                CrowdControlMod.Instance.Logger.LogError(e.Message);
+                State = EffectState.Errored;
+            }
         }
         finally
         {
@@ -79,8 +89,18 @@ public class TimedEffectState
             // ReSharper disable once AssignmentInConditionalExpression
             while (locked = TryGetLock()) yield return null;
             if (State != EffectState.Running) yield break;
-            response = Effect.Pause(Request);
-            State = EffectState.Paused;
+
+            try
+            {
+                response = Effect.Pause(Request);
+                State = EffectState.Paused;
+            }
+            catch (Exception e)
+            {
+                response = EffectResponse.Failure(Request.id, StandardErrors.ExceptionThrown);
+                CrowdControlMod.Instance.Logger.LogError(e.Message);
+                State = EffectState.Errored;
+            }
         }
         finally
         {
@@ -102,8 +122,18 @@ public class TimedEffectState
             // ReSharper disable once AssignmentInConditionalExpression
             while (locked = TryGetLock()) yield return null;
             if (State != EffectState.Paused) yield break;
-            response = Effect.Resume(Request);
-            State = EffectState.Running;
+
+            try
+            {
+                response = Effect.Resume(Request);
+                State = EffectState.Running;
+            }
+            catch (Exception e)
+            {
+                response = EffectResponse.Failure(Request.id, StandardErrors.ExceptionThrown);
+                CrowdControlMod.Instance.Logger.LogError(e.Message);
+                State = EffectState.Errored;
+            }
         }
         finally
         {
@@ -126,8 +156,18 @@ public class TimedEffectState
             // ReSharper disable once AssignmentInConditionalExpression
             while (locked = TryGetLock()) yield return null;
             if (State == EffectState.Finished) yield break;
-            response = Effect.Stop(Request);
-            State = EffectState.Finished;
+
+            try
+            {
+                response = Effect.Stop(Request);
+                State = EffectState.Finished;
+            }
+            catch (Exception e)
+            {
+                response = EffectResponse.Failure(Request.id, StandardErrors.ExceptionThrown);
+                CrowdControlMod.Instance.Logger.LogError(e.Message);
+                State = EffectState.Errored;
+            }
         }
         finally
         {
@@ -148,18 +188,27 @@ public class TimedEffectState
         {
             // ReSharper disable once AssignmentInConditionalExpression
             while (locked = TryGetLock()) yield return null;
-
             if (State != EffectState.Running) yield break;
-            if (TimeRemaining > 0)
+            
+            try
             {
-                response = Effect.Tick(Request);
-                TimeRemaining -= (long)(Time.fixedDeltaTime * 1000f);
+                if (TimeRemaining > 0)
+                {
+                    response = Effect.Tick(Request);
+                    TimeRemaining -= (long)(Time.fixedDeltaTime * 1000f);
+                }
+                else
+                {
+                    response = Effect.Stop(Request);
+                    State = EffectState.Finished;
+                    TimeRemaining = SITimeSpan.Zero;
+                }
             }
-            else
+            catch (Exception e)
             {
-                response = Effect.Stop(Request);
-                State = EffectState.Finished;
-                TimeRemaining = SITimeSpan.Zero;
+                response = EffectResponse.Failure(Request.id, StandardErrors.ExceptionThrown);
+                CrowdControlMod.Instance.Logger.LogError(e.Message);
+                State = EffectState.Errored;
             }
         }
         finally
