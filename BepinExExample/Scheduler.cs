@@ -174,7 +174,7 @@ public class Scheduler(CrowdControlMod mod, NetworkClient networkClient)
             if (!m_mod.GameStateManager.IsReady(pReq.Request.code!))
             {
                 m_networkClient.SendAsync(new EffectResponse(pReq.Request.id, EffectStatus.Retry)).Forget();
-                return;
+                continue;
             }
 
             if (pReq.TimedEffectState != null)

@@ -27,11 +27,11 @@ public class PassiveEnemies(CrowdControlMod mod, NetworkClient client) : Effect(
     public override EffectResponse? Stop(EffectRequest request)
     {
         //already off somehow(?), just abort with success since our job here is done
-        if (!Cheats.PassiveEnemies) return EffectResponse.Success(request.ID);
+        if (!Cheats.PassiveEnemies) return EffectResponse.Finished(request.ID);
 
         Cheats.PassiveEnemies = false;
         GameStateManager.DialogMsgAsync("Passive Enemies Ended", true).Forget();
 
-        return EffectResponse.Success(request.ID);
+        return EffectResponse.Finished(request.ID);
     }
 }

@@ -50,7 +50,6 @@ public class CrowdControlMod : BaseUnityPlugin
         Instance = this;
 
         Logger.LogInfo($"Loaded {MOD_GUID}. Patching.");
-        harmony.PatchAll(typeof(CrowdControlMod));
         harmony.PatchAll();
 
         Logger.LogInfo("Initializing Crowd Control");
@@ -86,6 +85,6 @@ public class CrowdControlMod : BaseUnityPlugin
 
     /***** == ONLY USE THIS IF FixedUpdate() ISN'T ALREADY BEING CALLED EVERY TICK == *****/
     //attach this to some game class with a function that runs every frame like the player's Update()
-    //[HarmonyPatch(typeof(Player), "FixedUpdate"), HarmonyPrefix]
-    //private static void FixedUpdate_Harmony() => Instance.FixedUpdate();
+    //[HarmonyPatch(typeof(PlayerMovement), nameof(PlayerMovement.FixedUpdate))]
+    //private class PlayerMovement_FixedUpdate { static void Prefix() => Instance.FixedUpdate(); }
 }
