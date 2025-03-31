@@ -28,11 +28,11 @@ public class InfiniteAmmo(CrowdControlMod mod, NetworkClient client) : Effect(mo
     public override EffectResponse? Stop(EffectRequest request)
     {
         //already off somehow(?), just abort with success since our job here is done
-        if (!Cheats.InfiniteAmmo) return EffectResponse.Success(request.ID);
+        if (!Cheats.InfiniteAmmo) return EffectResponse.Finished(request.ID);
 
         Cheats.InfiniteAmmo = false;
         GameStateManager.DialogMsgAsync("Infinite Ammo Ended", true).Forget();
 
-        return EffectResponse.Success(request.ID);
+        return EffectResponse.Finished(request.ID);
     }
 }

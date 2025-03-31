@@ -27,11 +27,11 @@ public class StaticEnemies(CrowdControlMod mod, NetworkClient client) : Effect(m
     public override EffectResponse? Stop(EffectRequest request)
     {
         //already off somehow(?), just abort with success since our job here is done
-        if (!Cheats.StaticEnemies) return EffectResponse.Success(request.ID);
+        if (!Cheats.StaticEnemies) return EffectResponse.Finished(request.ID);
 
         Cheats.StaticEnemies = false;
         GameStateManager.DialogMsgAsync("Static Enemies Ended", true).Forget();
 
-        return EffectResponse.Success(request.ID);
+        return EffectResponse.Finished(request.ID);
     }
 }

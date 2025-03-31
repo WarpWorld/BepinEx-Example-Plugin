@@ -28,11 +28,11 @@ public class GodMode(CrowdControlMod mod, NetworkClient client) : Effect(mod, cl
     public override EffectResponse? Stop(EffectRequest request)
     {
         //already off somehow(?), just abort with success since our job here is done
-        if (!Cheats.GodMode) return EffectResponse.Success(request.ID);
+        if (!Cheats.GodMode) return EffectResponse.Finished(request.ID);
 
         Cheats.GodMode = false;
         GameStateManager.DialogMsgAsync("God Mode Ended", true).Forget();
 
-        return EffectResponse.Success(request.ID);
+        return EffectResponse.Finished(request.ID);
     }
 }
