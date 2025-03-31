@@ -195,7 +195,7 @@ public class TimedEffectState
                 if (TimeRemaining > 0)
                 {
                     response = Effect.Tick(Request);
-                    TimeRemaining -= (long)(Time.fixedDeltaTime * 1000f);
+                    TimeRemaining -= Time.fixedDeltaTime;
                 }
                 else
                 {
