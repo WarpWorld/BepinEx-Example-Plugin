@@ -26,6 +26,6 @@ public class ForceKick(CrowdControlMod mod, NetworkClient client) : Effect(mod, 
     public override EffectResponse? Tick(EffectRequest request)
     {
         playerInput.ForceKick();
-        return EffectResponse.Success(request.ID);
+        return EffectResponse.Finished(request.ID);
     }
 }
