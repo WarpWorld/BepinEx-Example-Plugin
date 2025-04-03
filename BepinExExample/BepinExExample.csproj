@@ -2,7 +2,7 @@
   
   <PropertyGroup>
     <!-- ALWAYS SET THESE FOR A NEW GAME! -->
-    <TargetFrameworks>netstandard2.0</TargetFrameworks>
+    <TargetFrameworks>netstandard2.1</TargetFrameworks> <!-- There is rarely a reason to change this - leave it on netstandard2.1 unless you run into a problem -->
     <GameBaseDir>C:\Program Files (x86)\Steam\steamapps\common\Anger Foot</GameBaseDir>
     <GameAssemblyDir>$(GameBaseDir)\Anger Foot_Data\Managed</GameAssemblyDir>
     <!--========================================-->
