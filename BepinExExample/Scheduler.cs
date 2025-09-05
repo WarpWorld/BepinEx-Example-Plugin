@@ -30,15 +30,18 @@ public class Scheduler(CrowdControlMod mod, NetworkClient networkClient)
             {
                 case TimedEffectState.EffectState.NotStarted:
                     m_enumerator ??= TimedEffectState.Start();
-                    break;
+                    m_enumerator.MoveNext();
+                    return true;
                 case TimedEffectState.EffectState.Running:
+                case TimedEffectState.EffectState.Paused:
                     m_enumerator ??= TimedEffectState.Tick();
-                    break;
-                case TimedEffectState.EffectState.Finished:
+                    m_enumerator.MoveNext();
+                    return true;
+                //case TimedEffectState.EffectState.Errored:
+                //case TimedEffectState.EffectState.Finished:
+                default:
                     return false;
             }
-
-            return m_enumerator?.MoveNext() ?? false;
         }
 
         public void Pause()
