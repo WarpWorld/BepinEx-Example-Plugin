@@ -1,5 +1,6 @@
 ﻿using System.Collections;
 using ConnectorLib.JSON;
+using CrowdControl.Utilities;
 using UnityEngine;
 
 namespace CrowdControl.Delegates.Effects;
@@ -159,7 +160,7 @@ public class TimedEffectState
 
             try
             {
-                response = Effect.Stop(Request);
+                response = Effect.Stop(Request) ?? EffectResponse.Finished(Request.id);
                 State = EffectState.Finished;
             }
             catch (Exception e)
@@ -179,6 +180,8 @@ public class TimedEffectState
         }
     }
 
+    private static readonly IEnumerator EMPTY_ENUMERATOR = Enumerable.Empty<object>().GetEnumerator();
+    
     /// <summary>Advances the time of the current timed effect and executes the effect.</summary>
     public IEnumerator Tick()
     {
@@ -187,29 +190,41 @@ public class TimedEffectState
         try
         {
             // ReSharper disable once AssignmentInConditionalExpression
-            while (!(locked = TryGetLock())) yield return null;
-            if (State != EffectState.Running) yield break;
-            
-            try
+            // ReSharper disable once NotDisposedResourceIsReturned - it's the empty singleton enumerator
+            while (!(locked = TryGetLock())) return EMPTY_ENUMERATOR;
+
+            switch (State)
             {
-                if (TimeRemaining > 0)
+                case EffectState.Running when GameStateChecker.ShouldPauseEffects():
+                    return Pause();
+                case EffectState.Paused when !GameStateChecker.ShouldPauseEffects():
+                    return Resume();
+                case EffectState.Running:
                 {
-                    response = Effect.Tick(Request);
-                    TimeRemaining -= Time.fixedDeltaTime;
-                }
-                else
-                {
-                    response = Effect.Stop(Request);
-                    State = EffectState.Finished;
-                    TimeRemaining = SITimeSpan.Zero;
+                    try
+                    {
+                        if (TimeRemaining > 0)
+                        {
+                            response = Effect.Tick(Request);
+                            TimeRemaining -= CrowdControlMod.DeltaTime;
+                        }
+                        else
+                        {
+                            response = Effect.Stop(Request) ?? EffectResponse.Finished(Request.id);
+                            State = EffectState.Finished;
+                            TimeRemaining = SITimeSpan.Zero;
+                        }
+                    }
+                    catch (Exception e)
+                    {
+                        response = EffectResponse.Failure(Request.id, StandardErrors.ExceptionThrown);
+                        CrowdControlMod.Instance.Logger.LogError(e.Message);
+                        State = EffectState.Errored;
+                    }
+                    break;
                 }
             }
-            catch (Exception e)
-            {
-                response = EffectResponse.Failure(Request.id, StandardErrors.ExceptionThrown);
-                CrowdControlMod.Instance.Logger.LogError(e.Message);
-                State = EffectState.Errored;
-            }
+            return EMPTY_ENUMERATOR;
         }
         finally
         {
