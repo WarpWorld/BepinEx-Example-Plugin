@@ -32,13 +32,13 @@ public abstract class Effect
 
     /// <inheritdoc cref="Start"/>
     /// <summary>Pauses a timed effect.</summary>
-    public virtual EffectResponse? Pause(EffectRequest request) => null;
-    
+    public virtual EffectResponse? Pause(EffectRequest request) => EffectResponse.Paused(request.ID);
+
     /// <inheritdoc cref="Start"/>
     /// <summary>Resumes a paused timed effect.</summary>
-    public virtual EffectResponse? Resume(EffectRequest request) => null;
-    
+    public virtual EffectResponse? Resume(EffectRequest request) => EffectResponse.Resumed(request.ID);
+
     /// <inheritdoc cref="Start"/>
     /// <summary>Stops a running timed effect.</summary>
-    public virtual EffectResponse? Stop(EffectRequest request) => null;
+    public virtual EffectResponse? Stop(EffectRequest request) => EffectResponse.Finished(request.ID);
 }
