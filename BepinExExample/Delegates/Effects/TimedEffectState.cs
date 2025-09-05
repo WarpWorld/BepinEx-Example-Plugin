@@ -53,7 +53,7 @@ public class TimedEffectState
         try
         {
             // ReSharper disable once AssignmentInConditionalExpression
-            while (locked = TryGetLock()) yield return null;
+            while (!(locked = TryGetLock())) yield return null;
             if (State != EffectState.NotStarted) yield break;
 
             try
@@ -87,7 +87,7 @@ public class TimedEffectState
         try
         {
             // ReSharper disable once AssignmentInConditionalExpression
-            while (locked = TryGetLock()) yield return null;
+            while (!(locked = TryGetLock())) yield return null;
             if (State != EffectState.Running) yield break;
 
             try
@@ -120,7 +120,7 @@ public class TimedEffectState
         try
         {
             // ReSharper disable once AssignmentInConditionalExpression
-            while (locked = TryGetLock()) yield return null;
+            while (!(locked = TryGetLock())) yield return null;
             if (State != EffectState.Paused) yield break;
 
             try
@@ -154,7 +154,7 @@ public class TimedEffectState
         try
         {
             // ReSharper disable once AssignmentInConditionalExpression
-            while (locked = TryGetLock()) yield return null;
+            while (!(locked = TryGetLock())) yield return null;
             if (State == EffectState.Finished) yield break;
 
             try
@@ -187,7 +187,7 @@ public class TimedEffectState
         try
         {
             // ReSharper disable once AssignmentInConditionalExpression
-            while (locked = TryGetLock()) yield return null;
+            while (!(locked = TryGetLock())) yield return null;
             if (State != EffectState.Running) yield break;
             
             try
