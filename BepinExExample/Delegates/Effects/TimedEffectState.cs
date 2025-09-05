@@ -205,7 +205,7 @@ public class TimedEffectState
                     {
                         if (TimeRemaining > 0)
                         {
-                            response = Effect.Tick(Request);
+                            Effect.Tick(Request);
                             TimeRemaining -= CrowdControlMod.DeltaTime;
                         }
                         else
@@ -231,7 +231,7 @@ public class TimedEffectState
             if (locked)
             {
                 ReleaseLock();
-                Client.Send(response);
+                if(response!=null)Client.Send(response);
             }
         }
     }
