@@ -1,97 +1,108 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk.WindowsDesktop">
-  
-  <PropertyGroup>
-    <!-- ALWAYS SET THESE FOR A NEW GAME! -->
-    <TargetFrameworks>netstandard2.1</TargetFrameworks> <!-- There is rarely a reason to change this - leave it on netstandard2.1 unless you run into a problem -->
-    <GameBaseDir>C:\Program Files (x86)\Steam\steamapps\common\Anger Foot</GameBaseDir>
-    <GameAssemblyDir>$(GameBaseDir)\Anger Foot_Data\Managed</GameAssemblyDir>
-    <!--========================================-->
 
-    <RootNamespace>CrowdControl</RootNamespace>
-    <AssemblyName>CrowdControl</AssemblyName>
+    <PropertyGroup>
+        <!-- ALWAYS SET THESE FOR A NEW GAME! -->
+        <TargetFrameworks>netstandard2.1</TargetFrameworks> <!-- There is rarely a reason to change this - leave it on netstandard2.1 unless you run into a problem -->
+        <GameBaseDir>C:\Program Files (x86)\Steam\steamapps\common\No, I'm not a Human</GameBaseDir>
+        <GameAssemblyDir>$(GameBaseDir)\BepInEx\interop</GameAssemblyDir>
+        <!--========================================-->
 
-    <FileAlignment>512</FileAlignment>
-    <Deterministic>true</Deterministic>
-    <GenerateAssemblyInfo>false</GenerateAssemblyInfo>
-  </PropertyGroup>
+        <RootNamespace>CrowdControl</RootNamespace>
+        <AssemblyName>CrowdControl</AssemblyName>
 
-  <PropertyGroup>
-    <Build>$([System.DateTime]::op_Subtraction($([System.DateTime]::get_Now().get_Date()),$([System.DateTime]::new(2000,1,1))).get_TotalDays())</Build>
-    <Revision>$([MSBuild]::Divide($([System.DateTime]::get_Now().get_TimeOfDay().get_TotalSeconds()), 2).ToString('F0'))</Revision>
-    <Version Condition="'$(DesignTimeBuild)' != 'true' OR '$(BuildingProject)' == 'true'">5.0.$(Build).$(Revision)</Version>
-  </PropertyGroup>
+        <FileAlignment>512</FileAlignment>
+        <Deterministic>true</Deterministic>
+        <GenerateAssemblyInfo>false</GenerateAssemblyInfo>
+    </PropertyGroup>
 
-  <ItemGroup>
-    <PackageReference Include="Newtonsoft.Json" Version="13.0.3" />
-  </ItemGroup>
-  
-  <ItemGroup>
-    <Reference Include="ConnectorLib.JSON" />
-  </ItemGroup>
+    <PropertyGroup>
+        <Build>$([System.DateTime]::op_Subtraction($([System.DateTime]::get_Now().get_Date()),$([System.DateTime]::new(2000,1,1))).get_TotalDays())</Build>
+        <Revision>$([MSBuild]::Divide($([System.DateTime]::get_Now().get_TimeOfDay().get_TotalSeconds()), 2).ToString('F0'))</Revision>
+        <Version Condition="'$(DesignTimeBuild)' != 'true' OR '$(BuildingProject)' == 'true'">5.0.$(Build).$(Revision)</Version>
+    </PropertyGroup>
 
-  <ItemGroup>
-    <Reference Include="0Harmony">
-      <HintPath>$(GameBaseDir)\BepInEx\core\0Harmony.dll</HintPath>
-    </Reference>
-    <Reference Include="Assembly-CSharp">
-      <HintPath>$(GameAssemblyDir)\Assembly-CSharp.dll</HintPath>
-    </Reference>
-    <Reference Include="Assembly-CSharp-firstpass">
-      <HintPath>$(GameAssemblyDir)\Assembly-CSharp-firstpass.dll</HintPath>
-    </Reference>
-    <Reference Include="BepInEx">
-      <HintPath>$(GameBaseDir)\BepInEx\core\BepInEx.dll</HintPath>
-    </Reference>
-    <Reference Include="Unity.TextMeshPro">
-      <HintPath>$(GameAssemblyDir)\Unity.TextMeshPro.dll</HintPath>
-    </Reference>
-    <Reference Include="UnityEngine">
-      <HintPath>$(GameAssemblyDir)\UnityEngine.dll</HintPath>
-    </Reference>
-    <Reference Include="UnityEngine.AnimationModule">
-      <HintPath>$(GameAssemblyDir)\UnityEngine.AnimationModule.dll</HintPath>
-    </Reference>
-    <Reference Include="UnityEngine.AudioModule">
-      <HintPath>$(GameAssemblyDir)\UnityEngine.AudioModule.dll</HintPath>
-    </Reference>
-    <Reference Include="UnityEngine.CoreModule">
-      <HintPath>$(GameAssemblyDir)\UnityEngine.CoreModule.dll</HintPath>
-    </Reference>
-    <Reference Include="UnityEngine.IMGUIModule">
-      <HintPath>$(GameAssemblyDir)\UnityEngine.IMGUIModule.dll</HintPath>
-    </Reference>
-    <Reference Include="UnityEngine.PhysicsModule">
-      <HintPath>$(GameAssemblyDir)\UnityEngine.PhysicsModule.dll</HintPath>
-    </Reference>
-    <Reference Include="UnityEngine.TextRenderingModule">
-      <HintPath>$(GameAssemblyDir)\UnityEngine.TextRenderingModule.dll</HintPath>
-    </Reference>
-    <Reference Include="UnityEngine.UI">
-      <HintPath>$(GameAssemblyDir)\UnityEngine.UI.dll</HintPath>
-    </Reference>
-  </ItemGroup>
+    <ItemGroup>
+        <PackageReference Include="Newtonsoft.Json" Version="13.0.3"/>
+    </ItemGroup>
 
-  <ItemGroup>
-    <ProjectReference Include="..\ConnectorLib.JSON\ConnectorLib.JSON.csproj" />
-  </ItemGroup>
+    <ItemGroup>
+        <ProjectReference Include="..\ConnectorLib.JSON\ConnectorLib.JSON.csproj"/>
+    </ItemGroup>
 
-  <PropertyGroup>
-    <LangVersion>preview</LangVersion>
-    <CheckForOverflowUnderflow>true</CheckForOverflowUnderflow>
-    <AutoGenerateBindingRedirects>true</AutoGenerateBindingRedirects>
-    <CopyLocalLockFileAssemblies>true</CopyLocalLockFileAssemblies>
-    <Nullable>enable</Nullable>
-    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
-    <ImplicitUsings>enable</ImplicitUsings>
-    <PlatformTarget>x64</PlatformTarget>
-    <SelfContained>false</SelfContained>
-    <Platforms>AnyCPU;x64</Platforms>
-  </PropertyGroup>
+    <ItemGroup>
+        <Reference Include="0Harmony">
+            <HintPath>$(GameBaseDir)\BepInEx\core\0Harmony.dll</HintPath>
+        </Reference>
+        <Reference Include="BepInEx.Core">
+            <HintPath>$(GameBaseDir)\BepInEx\core\BepInEx.Core.dll</HintPath>
+        </Reference>
+        <Reference Include="BepInEx.Unity.Common">
+            <HintPath>$(GameBaseDir)\BepInEx\core\BepInEx.Unity.Common.dll</HintPath>
+        </Reference>
+        <Reference Include="BepInEx.Unity.IL2CPP">
+            <HintPath>$(GameBaseDir)\BepInEx\core\BepInEx.Unity.IL2CPP.dll</HintPath>
+        </Reference>
+        <Reference Include="Assembly-CSharp">
+            <HintPath>$(GameAssemblyDir)\Assembly-CSharp.dll</HintPath>
+        </Reference>
+        <Reference Include="Assembly-CSharp-firstpass">
+            <HintPath>$(GameAssemblyDir)\Assembly-CSharp-firstpass.dll</HintPath>
+        </Reference>
+        <Reference Include="Cpp2IL.Core">
+            <HintPath>$(GameBaseDir)\BepInEx\core\Cpp2IL.Core.dll</HintPath>
+        </Reference>
+        <Reference Include="Il2CppInterop.Common">
+            <HintPath>$(GameBaseDir)\BepInEx\core\Il2CppInterop.Common.dll</HintPath>
+        </Reference>
+        <Reference Include="Il2CppInterop.Runtime">
+            <HintPath>$(GameBaseDir)\BepInEx\core\Il2CppInterop.Runtime.dll</HintPath>
+        </Reference>
+        <Reference Include="Unity.TextMeshPro">
+            <HintPath>$(GameAssemblyDir)\Unity.TextMeshPro.dll</HintPath>
+        </Reference>
+        <Reference Include="UnityEngine">
+            <HintPath>$(GameAssemblyDir)\UnityEngine.dll</HintPath>
+        </Reference>
+        <Reference Include="UnityEngine.AnimationModule">
+            <HintPath>$(GameAssemblyDir)\UnityEngine.AnimationModule.dll</HintPath>
+        </Reference>
+        <Reference Include="UnityEngine.AudioModule">
+            <HintPath>$(GameAssemblyDir)\UnityEngine.AudioModule.dll</HintPath>
+        </Reference>
+        <Reference Include="UnityEngine.CoreModule">
+            <HintPath>$(GameAssemblyDir)\UnityEngine.CoreModule.dll</HintPath>
+        </Reference>
+        <Reference Include="UnityEngine.IMGUIModule">
+            <HintPath>$(GameAssemblyDir)\UnityEngine.IMGUIModule.dll</HintPath>
+        </Reference>
+        <Reference Include="UnityEngine.PhysicsModule">
+            <HintPath>$(GameAssemblyDir)\UnityEngine.PhysicsModule.dll</HintPath>
+        </Reference>
+        <Reference Include="UnityEngine.TextRenderingModule">
+            <HintPath>$(GameAssemblyDir)\UnityEngine.TextRenderingModule.dll</HintPath>
+        </Reference>
+        <Reference Include="UnityEngine.UI">
+            <HintPath>$(GameAssemblyDir)\UnityEngine.UI.dll</HintPath>
+        </Reference>
+    </ItemGroup>
 
-  <PropertyGroup>
-    <Company>Warp World, Inc.</Company>
-    <Copyright>© 2025 Warp World, Inc.</Copyright>
-    <NeutralLanguage>en-US</NeutralLanguage>
-  </PropertyGroup>
+    <PropertyGroup>
+        <LangVersion>preview</LangVersion>
+        <CheckForOverflowUnderflow>true</CheckForOverflowUnderflow>
+        <AutoGenerateBindingRedirects>true</AutoGenerateBindingRedirects>
+        <CopyLocalLockFileAssemblies>true</CopyLocalLockFileAssemblies>
+        <Nullable>enable</Nullable>
+        <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+        <ImplicitUsings>enable</ImplicitUsings>
+        <PlatformTarget>x64</PlatformTarget>
+        <SelfContained>false</SelfContained>
+        <Platforms>AnyCPU;x64</Platforms>
+    </PropertyGroup>
+
+    <PropertyGroup>
+        <Company>Warp World, Inc.</Company>
+        <Copyright>© 2025 Warp World, Inc.</Copyright>
+        <NeutralLanguage>en-US</NeutralLanguage>
+    </PropertyGroup>
 
 </Project>

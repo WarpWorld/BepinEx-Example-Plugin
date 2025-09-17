@@ -1,5 +1,6 @@
 ﻿using BepInEx;
 using BepInEx.Logging;
+using BepInEx.Unity.IL2CPP;
 using CrowdControl.Delegates.Effects;
 using UnityEngine;
 
@@ -9,7 +10,7 @@ namespace CrowdControl;
 /// The main Crowd Control mod class.
 /// </summary>
 [BepInPlugin(MOD_GUID, MOD_NAME, MOD_VERSION)]
-public class CrowdControlMod : BaseUnityPlugin
+public class CrowdControlMod : BasePlugin
 {
     // Mod Details
     public const string MOD_GUID = "WarpWorld.CrowdControl";
@@ -21,7 +22,7 @@ public class CrowdControlMod : BaseUnityPlugin
     private readonly HarmonyLib.Harmony harmony = new(MOD_GUID);
 
     /// <summary>The logger for the mod.</summary>
-    public new ManualLogSource Logger => base.Logger;
+    public ManualLogSource Logger => Log;
 
     /// <summary>The singleton instance of the game mod.</summary>
     internal static CrowdControlMod Instance { get; private set; } = null!;
@@ -44,10 +45,15 @@ public class CrowdControlMod : BaseUnityPlugin
     private const float GAME_STATUS_UPDATE_INTERVAL = 1f;
     private float m_gameStatusUpdateTimer;
 
+
+    /// <summary>Logs a debug message to the mod logger.</summary>
+    /// <param name="message">The message to log</param>
+    public static void LogDebug(string message) => Instance.Logger.LogDebug(message);
+
     /// <summary>
     /// Called when the mod is awakened.
     /// </summary>
-    void Awake()
+    public override void Load()
     {
         Instance = this;
 
