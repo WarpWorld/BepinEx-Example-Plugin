@@ -1,7 +1,5 @@
 ﻿using System.Collections;
 using ConnectorLib.JSON;
-using CrowdControl.Utilities;
-using UnityEngine;
 
 namespace CrowdControl.Delegates.Effects;
 
@@ -195,9 +193,9 @@ public class TimedEffectState
 
             switch (State)
             {
-                case EffectState.Running when GameStateChecker.ShouldPauseEffects():
+                case EffectState.Running when !CrowdControlMod.Instance.GameStateManager.IsReady():
                     return Pause();
-                case EffectState.Paused when !GameStateChecker.ShouldPauseEffects():
+                case EffectState.Paused when !CrowdControlMod.Instance.GameStateManager.IsReady():
                     return Resume();
                 case EffectState.Running:
                 {

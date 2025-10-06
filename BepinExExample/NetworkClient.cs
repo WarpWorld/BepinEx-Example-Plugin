@@ -1,4 +1,5 @@
-﻿using System.Globalization;
+﻿using System.Diagnostics;
+using System.Globalization;
 using System.Net.Sockets;
 using System.Text;
 using ConnectorLib.JSON;
@@ -11,6 +12,11 @@ namespace CrowdControl;
 // ReSharper disable once ClassWithVirtualMembersNeverInherited.Global
 public partial class NetworkClient : IDisposable
 {
+    private const bool PROCESS_LOOKUP_FALLBACK = true;
+    
+    private static readonly SITimeSpan TIMEOUT_NO_PROCESS = 5;
+    private static readonly SITimeSpan TIMEOUT_NO_CONNECTION = 2;
+    
     /// <summary>Crowd Control client IP or hostname.</summary>
     public static readonly string CV_HOST = "127.0.0.1";
 
@@ -66,6 +72,17 @@ public partial class NetworkClient : IDisposable
         Thread.CurrentThread.CurrentCulture = CultureInfo.InvariantCulture; //do not remove this - kat
         while (!m_quitting.IsCancellationRequested)
         {
+#pragma warning disable CS0162 // Unreachable code detected
+            // Check if CrowdControl process is running before attempting to connect
+            if ((!IsCrowdControlSemaphorePresent()) &&
+                (!(PROCESS_LOOKUP_FALLBACK && IsCrowdControlProcessRunning())))
+            {
+                CrowdControlMod.Instance.Logger.LogMessage("No CrowdControl process found, skipping connection attempt...");
+                Thread.Sleep((TimeSpan)TIMEOUT_NO_PROCESS);
+                continue;
+            }
+#pragma warning restore CS0162 // Unreachable code detected
+            
             CrowdControlMod.Instance.Logger.LogInfo("Attempting to connect to Crowd Control");
 
             try
@@ -89,7 +106,7 @@ public partial class NetworkClient : IDisposable
                 try { m_client?.Close(); }
                 catch {/**/}
             }
-            Thread.Sleep(2000);
+            Thread.Sleep((TimeSpan)TIMEOUT_NO_CONNECTION);
         }
     }
 
@@ -104,7 +121,7 @@ public partial class NetworkClient : IDisposable
                 if (m_client?.Connected ?? false)
                     KeepAlive();
             }
-            catch (Exception e) { CrowdControlMod.Instance.Logger.LogError(e); }
+            catch { /**/ }
             Thread.Sleep(2000);
         }
     }
@@ -112,6 +129,8 @@ public partial class NetworkClient : IDisposable
     /// <summary>Reads from the network stream and processes messages.</summary>
     private void ClientLoop()
     {
+        Thread.CurrentThread.CurrentCulture = CultureInfo.InvariantCulture; //do not remove this - kat
+        
         m_streamReader = new(m_client!.GetStream());
         CrowdControlMod.Instance.Logger.LogInfo("Connected to Crowd Control");
 
@@ -148,6 +167,66 @@ public partial class NetworkClient : IDisposable
         catch (Exception ex)
         {
             CrowdControlMod.Instance.Logger.LogError(ex);
+        }
+    }
+    
+    /// <summary>Checks if the CrowdControl semaphore is present, indicating that the CrowdControl client is running.</summary>
+    /// <returns>True if the semaphore is present, false otherwise.</returns>
+    private static bool IsCrowdControlSemaphorePresent() => Semaphore.TryOpenExisting("CrowdControl", out _);
+
+    /// <summary>
+    /// Checks if any CrowdControl process is running.
+    /// Looks for processes with names containing "crowdcontrol" (case-insensitive).
+    /// Handles cases where processes might be running with different privilege levels.
+    /// </summary>
+    /// <returns>True if a CrowdControl process is found, false otherwise.</returns>
+    private static bool IsCrowdControlProcessRunning()
+    {
+        try
+        {
+            Process[] processes = Process.GetProcesses();
+            int accessibleProcesses = 0;
+            int inaccessibleProcesses = 0;
+            
+            foreach (Process process in processes)
+            {
+                try
+                {
+                    if (process.ProcessName.IndexOf("crowdcontrol", StringComparison.OrdinalIgnoreCase) >= 0)
+                    {
+                        CrowdControlMod.Instance.Logger.LogMessage($"Found CrowdControl process: {process.ProcessName} (PID: {process.Id})");
+                        return true;
+                    }
+                    accessibleProcesses++;
+                }
+                catch (UnauthorizedAccessException)
+                {
+                    // Process is running with different privileges (e.g., admin vs regular user)
+                    inaccessibleProcesses++;
+                }
+                catch (Exception ex)
+                {
+                    // Other access issues
+                    CrowdControlMod.Instance.Logger.LogMessage($"Could not access process: {ex.Message}");
+                    inaccessibleProcesses++;
+                }
+            }
+            
+            // If we have inaccessible processes, it's possible CrowdControl is running with different privileges
+            if (inaccessibleProcesses > 0)
+            {
+                CrowdControlMod.Instance.Logger.LogMessage($"Found {inaccessibleProcesses} inaccessible processes (possibly running with different privileges). Attempting connection anyway.");
+                // This handles the case where CrowdControl is running as admin but game is not
+                return true;
+            }
+            
+            return false;
+        }
+        catch (Exception ex)
+        {
+            CrowdControlMod.Instance.Logger.LogMessage($"Error checking for CrowdControl processes: {ex.Message}");
+            // If we can't check processes at all, assume CrowdControl might be running and attempt connection
+            return true;
         }
     }
 

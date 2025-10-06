@@ -24,10 +24,6 @@
   <ItemGroup>
     <PackageReference Include="Newtonsoft.Json" Version="13.0.3" />
   </ItemGroup>
-  
-  <ItemGroup>
-    <Reference Include="ConnectorLib.JSON" />
-  </ItemGroup>
 
   <ItemGroup>
     <Reference Include="0Harmony">
