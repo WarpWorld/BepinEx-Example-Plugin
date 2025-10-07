@@ -21,7 +21,7 @@ public struct SITimeSpan :
     public static SITimeSpan Parse(string input)
     {
         if (input.Contains('.'))
-            return new SITimeSpan(TimeSpan.ParseExact(input, @"mm\:ss\.fff", null));
+            return new(TimeSpan.ParseExact(input, @"mm\:ss\.fff", null));
 
         return new(TimeSpan.Parse(input));
     }
