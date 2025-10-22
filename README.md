@@ -1,4 +1,4 @@
-Example project for setting up a BepinEx plugin to connect a game to Crowd Control
+Example project for setting up a BepinEx 5 (mono) plugin to connect a game to Crowd Control
 
 Instructions:
 
