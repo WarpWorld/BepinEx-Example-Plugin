@@ -16,7 +16,7 @@ public class CrowdControlMod : BaseUnityPlugin
     public const string MOD_NAME = "Crowd Control";
     public const string MOD_VERSION = "1.0.0.0";
     
-    public static float DeltaTime => Time.fixedDeltaTime; //change this to Time.deltaTime if using Update instead of FixedUpdate
+    public static float DeltaTime => Time.fixedDeltaTime / Time.timeScale; //change this to Time.deltaTime if using Update instead of FixedUpdate
 
     private readonly HarmonyLib.Harmony harmony = new(MOD_GUID);
 
