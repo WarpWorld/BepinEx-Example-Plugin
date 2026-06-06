@@ -1,5 +1,6 @@
 ﻿using System.Diagnostics;
 using System.Globalization;
+using System.IO;
 using System.Net.Sockets;
 using System.Text;
 using ConnectorLib.JSON;
@@ -30,8 +31,10 @@ public partial class NetworkClient : IDisposable
     private readonly CrowdControlMod m_mod;
 
     private readonly CancellationTokenSource m_quitting = new();
+    private readonly object m_shutdownLock = new();
+    private readonly object m_sendLock = new();
+    private volatile bool m_disposed;
 
-    //dispose of the websocket when the client is destroyed
     ~NetworkClient() => Dispose(false);
 
     // ReSharper disable NotAccessedField.Local
@@ -40,18 +43,76 @@ public partial class NetworkClient : IDisposable
     // ReSharper restore NotAccessedField.Local
 
     /// <summary>Disposes of the client connection.</summary>
-    public void Dispose() => Dispose(true);
-
-    /// <summary>Disposes of the client connection.</summary>
-    /// <param name="disposing">True if this is being called from a disposer, false if the call is from a finalizer.</param>
-    protected virtual void Dispose(bool disposing)
+    public void Dispose()
     {
-        try { m_client?.Dispose(); }
-        catch {/**/}
-        try { m_quitting.Cancel(); }
-        catch {/**/}
+        Dispose(true);
         GC.SuppressFinalize(this);
     }
+
+    /// <summary>Closes the Crowd Control socket and stops background threads (call from <c>OnApplicationQuit</c>).</summary>
+    /// <param name="disposing">True when releasing managed resources.</param>
+    protected virtual void Dispose(bool disposing)
+    {
+        if (!disposing)
+            return;
+
+        lock (m_shutdownLock)
+        {
+            if (m_disposed)
+                return;
+            m_disposed = true;
+        }
+
+        try { m_quitting.Cancel(); }
+        catch {/**/}
+
+        CloseConnection();
+    }
+
+    private void CloseConnection()
+    {
+        lock (m_sendLock)
+        {
+            try
+            {
+                m_streamReader?.Dispose();
+            }
+            catch {/**/}
+            finally
+            {
+                m_streamReader = null;
+            }
+
+            try
+            {
+                if (m_client?.Connected == true)
+                    m_client.Client.Shutdown(SocketShutdown.Both);
+
+                m_client?.Close();
+                m_client?.Dispose();
+            }
+            catch {/**/}
+            finally
+            {
+                m_client = null;
+            }
+        }
+    }
+
+    private static bool IsBenignShutdownException(Exception e, bool quitting) =>
+        quitting
+        || e is ThreadAbortException
+        || e is ObjectDisposedException
+        || e is OperationCanceledException
+        || (e is IOException io && io.InnerException is SocketException se && IsBenignSocketError(se.SocketErrorCode))
+        || (e is SocketException se2 && IsBenignSocketError(se2.SocketErrorCode));
+
+    private static bool IsBenignSocketError(SocketError code) =>
+        code is SocketError.ConnectionAborted
+            or SocketError.ConnectionReset
+            or SocketError.Interrupted
+            or SocketError.OperationAborted
+            or SocketError.Shutdown;
 
     /// <summary>True if the game is connected to the Crowd Control client, false otherwise.</summary>
     public bool Connected => m_client?.Connected ?? false;
@@ -62,8 +123,10 @@ public partial class NetworkClient : IDisposable
     {
         m_mod = mod;
 
-        (m_readLoop = new Thread(NetworkLoop)).Start();
-        (m_maintenanceLoop = new Thread(MaintenanceLoop)).Start();
+        m_readLoop = new Thread(NetworkLoop) { IsBackground = true, Name = "CrowdControl.NetworkRead" };
+        m_maintenanceLoop = new Thread(MaintenanceLoop) { IsBackground = true, Name = "CrowdControl.NetworkMaintenance" };
+        m_readLoop.Start();
+        m_maintenanceLoop.Start();
     }
 
     /// <summary>Maintains a connection to the network stream. Passes control to <see cref="ClientLoop"/> while connected.</summary>
@@ -78,7 +141,7 @@ public partial class NetworkClient : IDisposable
                 (!(PROCESS_LOOKUP_FALLBACK && IsCrowdControlProcessRunning())))
             {
                 CrowdControlMod.Instance.Logger.LogMessage("No CrowdControl process found, skipping connection attempt...");
-                Thread.Sleep((TimeSpan)TIMEOUT_NO_PROCESS);
+                m_quitting.Token.WaitHandle.WaitOne((TimeSpan)TIMEOUT_NO_PROCESS);
                 continue;
             }
 #pragma warning restore CS0162 // Unreachable code detected
@@ -98,15 +161,21 @@ public partial class NetworkClient : IDisposable
             }
             catch (Exception e)
             {
-                CrowdControlMod.Instance.Logger.LogError(e);
-                CrowdControlMod.Instance.Logger.LogError("Failed to connect to Crowd Control");
+                if (!IsBenignShutdownException(e, m_quitting.IsCancellationRequested))
+                {
+                    CrowdControlMod.Instance.Logger.LogError(e);
+                    CrowdControlMod.Instance.Logger.LogError("Failed to connect to Crowd Control");
+                }
             }
             finally
             {
-                try { m_client?.Close(); }
-                catch {/**/}
+                CloseConnection();
             }
-            Thread.Sleep((TimeSpan)TIMEOUT_NO_CONNECTION);
+
+            if (m_quitting.IsCancellationRequested)
+                break;
+
+            m_quitting.Token.WaitHandle.WaitOne((TimeSpan)TIMEOUT_NO_CONNECTION);
         }
     }
 
@@ -118,11 +187,12 @@ public partial class NetworkClient : IDisposable
         {
             try
             {
-                if (m_client?.Connected ?? false)
+                if (!m_disposed && (m_client?.Connected ?? false))
                     KeepAlive();
             }
             catch { /**/ }
-            Thread.Sleep(2000);
+
+            m_quitting.Token.WaitHandle.WaitOne(1000);
         }
     }
 
@@ -130,27 +200,37 @@ public partial class NetworkClient : IDisposable
     private void ClientLoop()
     {
         Thread.CurrentThread.CurrentCulture = CultureInfo.InvariantCulture; //do not remove this - kat
-        
-        m_streamReader = new(m_client!.GetStream());
-        CrowdControlMod.Instance.Logger.LogInfo("Connected to Crowd Control");
 
         try
         {
-            while (!m_quitting.IsCancellationRequested)
+            m_streamReader = new(m_client!.GetStream());
+            CrowdControlMod.Instance.Logger.LogInfo("Connected to Crowd Control");
+
+            try
             {
-                string message = m_streamReader.ReadUntilNullTerminator();
-                OnMessage(message.Trim());
+                while (!m_quitting.IsCancellationRequested)
+                {
+                    string message = m_streamReader.ReadUntilNullTerminator();
+                    OnMessage(message.Trim());
+                }
+            }
+            catch (EndOfStreamException)
+            {
+                if (!m_quitting.IsCancellationRequested)
+                    CrowdControlMod.Instance.Logger.LogInfo("Disconnected from Crowd Control");
+            }
+            catch (Exception e)
+            {
+                if (!IsBenignShutdownException(e, m_quitting.IsCancellationRequested))
+                {
+                    CrowdControlMod.Instance.Logger.LogError(e);
+                    CrowdControlMod.Instance.Logger.LogError("Disconnected from Crowd Control");
+                }
             }
         }
-        catch (EndOfStreamException)
+        finally
         {
-            CrowdControlMod.Instance.Logger.LogInfo("Disconnected from Crowd Control");
-            m_client?.Close();
-        }
-        catch (Exception e)
-        {
-            CrowdControlMod.Instance.Logger.LogError(e);
-            m_client?.Close();
+            CloseConnection();
         }
     }
 
@@ -158,6 +238,8 @@ public partial class NetworkClient : IDisposable
     /// <param name="message">A JSON-formatted message body.</param>
     private void OnMessage(string message)
     {
+        if (m_disposed || m_quitting.IsCancellationRequested)
+            return;
         if (string.IsNullOrWhiteSpace(message)) return;
         try
         {
@@ -185,7 +267,6 @@ public partial class NetworkClient : IDisposable
         try
         {
             Process[] processes = Process.GetProcesses();
-            int accessibleProcesses = 0;
             int inaccessibleProcesses = 0;
             
             foreach (Process process in processes)
@@ -197,7 +278,6 @@ public partial class NetworkClient : IDisposable
                         CrowdControlMod.Instance.Logger.LogMessage($"Found CrowdControl process: {process.ProcessName} (PID: {process.Id})");
                         return true;
                     }
-                    accessibleProcesses++;
                 }
                 catch (UnauthorizedAccessException)
                 {
@@ -237,15 +317,24 @@ public partial class NetworkClient : IDisposable
     {
         try
         {
-            if (response == null) return false;
-            if (!Connected) return false;
+            if (response == null || m_disposed || m_quitting.IsCancellationRequested)
+                return false;
+
             byte[] bytes = [.. Encoding.UTF8.GetBytes(response.Serialize()), 0];
-            m_client!.GetStream().Write(bytes, 0, bytes.Length);
-            return true;
+
+            lock (m_sendLock)
+            {
+                if (m_client?.Connected != true)
+                    return false;
+
+                m_client.GetStream().Write(bytes, 0, bytes.Length);
+                return true;
+            }
         }
         catch (Exception e)
         {
-            CrowdControlMod.Instance.Logger.LogError($"Error sending a message to the Crowd Control client: {e}");
+            if (!IsBenignShutdownException(e, m_quitting.IsCancellationRequested))
+                CrowdControlMod.Instance.Logger.LogError($"Error sending a message to the Crowd Control client: {e}");
             return false;
         }
     }
@@ -258,6 +347,9 @@ public partial class NetworkClient : IDisposable
     /// <param name="message">An optional reason message to send to the client prior to disconnection.</param>
     public void Stop(string? message = null)
     {
+        if (m_disposed)
+            return;
+
         if (message != null)
         {
             Send(new MessageResponse()
@@ -266,7 +358,11 @@ public partial class NetworkClient : IDisposable
                 message = message
             });
         }
-        m_client?.Close();
+
+        try { m_quitting.Cancel(); }
+        catch {/**/}
+
+        CloseConnection();
     }
 
     /// <inheritdoc cref="Stop"/>

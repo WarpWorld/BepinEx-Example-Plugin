@@ -71,6 +71,26 @@ public class CrowdControlMod : BaseUnityPlugin
         Logger.LogInfo("Crowd Control Initialized");
     }
 
+    void OnApplicationQuit()
+    {
+        try
+        {
+            Client?.Stop();
+            Client?.Dispose();
+        }
+        catch {/**/}
+    }
+
+    void OnDestroy()
+    {
+        try
+        {
+            Client?.Stop();
+            Client?.Dispose();
+        }
+        catch {/**/}
+    }
+
     /// <summary>Called every fixed frame (physics) update.</summary>
     /// <remarks>This function is called on the main game thread. Blocking here may cause lag or crash the game entirely.</remarks>
     void FixedUpdate()
