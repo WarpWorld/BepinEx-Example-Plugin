@@ -1,7 +1,10 @@
-using ConnectorLib.JSON;
-using UnityEngine;
-
 namespace CrowdControl.Delegates.Effects.Implementations;
+
+/* == EXAMPLE (Anger Foot) - a timed effect that toggles a game flag on start/stop ==
+ * See GodMode.cs for a full explanation of this pattern.
+ * Uncomment and adapt this for your game.
+
+using ConnectorLib.JSON;
 
 //the selfConflict flag is set true here for clarity, but it's actually the default value if the duration is greater than 0
 [Effect(
@@ -17,10 +20,10 @@ public class InfiniteAmmo(CrowdControlMod mod, NetworkClient client) : Effect(mo
         //this would never run if the effect were already running since it would be blocked by the selfConflict check
         //as such, we assume a player just playing with infinite ammo on isn't going to be turning it off in a few seconds
         //and just fail here rather than retrying waiting for something that probably isn't happening
-        if (Cheats.InfiniteAmmo) return EffectResponse.Failure(request.ID);
+        if (Cheats.InfiniteAmmo) return EffectResponse.Failure(request.ID, StandardErrors.AlreadyInState);
 
         Cheats.InfiniteAmmo = true;
-        GameStateManager.DialogMsgAsync("Infinite Ammo Enabled", true).Forget();
+        GameStateManager.DialogMsgAsync($"{request.GetViewerDisplayName()} enabled Infinite Ammo", true).Forget();
 
         return EffectResponse.Success(request.ID);
     }
@@ -36,3 +39,5 @@ public class InfiniteAmmo(CrowdControlMod mod, NetworkClient client) : Effect(mo
         return EffectResponse.Finished(request.ID);
     }
 }
+
+*/

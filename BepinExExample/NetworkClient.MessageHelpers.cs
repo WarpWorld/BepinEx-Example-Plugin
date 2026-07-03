@@ -90,11 +90,11 @@ public partial class NetworkClient
 
     /// <summary>Makes all effects selectable on the menu.</summary>
     /// <returns>True if the message was sent successfully, false otherwise.</returns>
-    public bool EnableAllEffects() => ShowEffects(m_mod.EffectLoader.Effects.Keys);
+    public bool EnableAllEffects() => EnableEffects(m_mod.EffectLoader.Effects.Keys);
 
     /// <inheritdoc cref="EnableAllEffects()"/>
     /// <summary>Asynchronously makes all effects selectable on the menu.</summary>
-    public Task<bool> EnableAllEffectsAsync() => ShowEffectsAsync(m_mod.EffectLoader.Effects.Keys);
+    public Task<bool> EnableAllEffectsAsync() => EnableEffectsAsync(m_mod.EffectLoader.Effects.Keys);
 
     #endregion
     
@@ -117,11 +117,11 @@ public partial class NetworkClient
 
     /// <summary>Makes all effects unselectable on the menu.</summary>
     /// <returns>True if the message was sent successfully, false otherwise.</returns>
-    public bool DisableAllEffects() => ShowEffects(m_mod.EffectLoader.Effects.Keys);
+    public bool DisableAllEffects() => DisableEffects(m_mod.EffectLoader.Effects.Keys);
 
     /// <inheritdoc cref="DisableAllEffects()"/>
     /// <summary>Asynchronously makes all effects unselectable on the menu.</summary>
-    public Task<bool> DisableAllEffectsAsync() => ShowEffectsAsync(m_mod.EffectLoader.Effects.Keys);
+    public Task<bool> DisableAllEffectsAsync() => DisableEffectsAsync(m_mod.EffectLoader.Effects.Keys);
     
     #endregion
 }

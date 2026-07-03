@@ -26,6 +26,14 @@ public class DelimitedStreamReader(NetworkStream stream) : IDisposable
         catch { /**/ }
     }
 
+    /// <summary>
+    /// The maximum allowed size of a single message, in bytes.
+    /// Crowd Control messages are small (well under a kilobyte), so anything approaching this size
+    /// means the stream is corrupt or the peer isn't a Crowd Control client. Aborting the read keeps
+    /// a bad peer from growing the buffer without bound; the caller will drop and retry the connection.
+    /// </summary>
+    private const int MAX_MESSAGE_SIZE = 1024 * 1024;
+
     /// <summary>Reads data from the socket until a null terminator is encountered.</summary>
     /// <returns>The data read from the socket.</returns>
     public string ReadUntilNullTerminator()
@@ -36,6 +44,12 @@ public class DelimitedStreamReader(NetworkStream stream) : IDisposable
         {
             if (byteRead == 0x00) // null terminator
                 break;
+
+            if (_memory_stream.Length >= MAX_MESSAGE_SIZE)
+            {
+                _memory_stream.SetLength(0);
+                throw new InvalidDataException("Message exceeded the maximum allowed size without a null terminator. Dropping the connection.");
+            }
 
             _memory_stream.WriteByte((byte)byteRead);
         }

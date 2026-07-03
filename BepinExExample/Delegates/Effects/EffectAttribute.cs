@@ -30,7 +30,8 @@ public class EffectAttribute(string[] ids, SITimeSpan defaultDuration, string[] 
 
     public EffectAttribute(string id) : this([id], SITimeSpan.Zero, []) { }
 
-    public EffectAttribute(string id, float defaultDuration) : this([id], defaultDuration, (SITimeSpan.Zero > 0) ? [id] : []) { }
+    //timed effects (duration > 0) conflict with themselves by default
+    public EffectAttribute(string id, float defaultDuration) : this([id], defaultDuration, (defaultDuration > 0) ? [id] : []) { }
 
     public EffectAttribute(string id, float defaultDuration, string conflict) : this([id], defaultDuration, [conflict]) { }
 

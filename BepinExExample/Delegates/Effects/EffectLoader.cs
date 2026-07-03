@@ -19,7 +19,8 @@ public class EffectLoader
     /// </summary>
     public EffectLoader(CrowdControlMod mod, NetworkClient client)
     {
-        foreach (Type type in Assembly.GetExecutingAssembly().GetTypes().Where(type => type.IsSubclassOf(typeof(Effect))))
+        //abstract classes are skipped so intermediate base classes can be used to share code between effects
+        foreach (Type type in Assembly.GetExecutingAssembly().GetTypes().Where(type => type.IsSubclassOf(typeof(Effect)) && !type.IsAbstract))
         {
             try
             {

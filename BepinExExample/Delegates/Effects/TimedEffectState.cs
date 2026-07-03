@@ -44,6 +44,24 @@ public class TimedEffectState
         TimeRemaining = duration;
     }
 
+    /// <summary>
+    /// Stamps the remaining effect time onto a response (where the protocol expects it) and attaches
+    /// the common metadata before it is sent to the Crowd Control client.
+    /// </summary>
+    /// <param name="response">The response to finalize. May be null, in which case nothing happens.</param>
+    /// <remarks>
+    /// The client uses <see cref="EffectResponse.timeRemaining"/> on Success/Paused/Resumed messages to keep
+    /// its countdown display in sync with the game, so it must always be filled in for those statuses.
+    /// </remarks>
+    private void FinalizeResponse(EffectResponse? response)
+    {
+        if (response == null) return;
+        if (response.timeRemaining == 0 &&
+            response.status is EffectStatus.Success or EffectStatus.Paused or EffectStatus.Resumed)
+            response.timeRemaining = (long)TimeRemaining.TotalMilliseconds;
+        Client.AttachMetadata(response);
+    }
+
     /// <summary>Runs the timed thread and starts the execution of the effect.</summary>
     public IEnumerator Start()
     {
@@ -73,6 +91,7 @@ public class TimedEffectState
             if (locked)
             {
                 ReleaseLock();
+                FinalizeResponse(response);
                 Client.Send(response);
             }
         }
@@ -106,6 +125,7 @@ public class TimedEffectState
             if (locked)
             {
                 ReleaseLock();
+                FinalizeResponse(response);
                 Client.Send(response);
             }
         }
@@ -139,6 +159,7 @@ public class TimedEffectState
             if (locked)
             {
                 ReleaseLock();
+                FinalizeResponse(response);
                 Client.Send(response);
             }
         }
@@ -173,6 +194,7 @@ public class TimedEffectState
             if (locked)
             {
                 ReleaseLock();
+                FinalizeResponse(response);
                 Client.Send(response);
             }
         }
@@ -193,9 +215,10 @@ public class TimedEffectState
 
             switch (State)
             {
+                //pause the effect while the game can't accept effects, resume it once it can again
                 case EffectState.Running when !CrowdControlMod.Instance.GameStateManager.IsReady():
                     return Pause();
-                case EffectState.Paused when !CrowdControlMod.Instance.GameStateManager.IsReady():
+                case EffectState.Paused when CrowdControlMod.Instance.GameStateManager.IsReady():
                     return Resume();
                 case EffectState.Running:
                 {
@@ -229,7 +252,11 @@ public class TimedEffectState
             if (locked)
             {
                 ReleaseLock();
-                if(response!=null)Client.Send(response);
+                if (response != null)
+                {
+                    FinalizeResponse(response);
+                    Client.Send(response);
+                }
             }
         }
     }

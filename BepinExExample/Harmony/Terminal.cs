@@ -1,16 +1,20 @@
-﻿using System.Reflection;
+﻿namespace CrowdControl.Harmony;
+
+/* == EXAMPLE (Anger Foot) - a Harmony patch adding debug commands to the game's dev console ==
+ * This adds two commands to Anger Foot's built-in terminal:
+ *   crowdcontrol       - prints the mod version and connection status
+ *   crowdcontrol-reset - re-enables all effects on the Crowd Control menu
+ * This is a development/debugging convenience only and is not required for the mod to work.
+ *
+ * These functions are usually called on the main game thread, depending on implementation.
+ * Blocking here may cause lag or crash the game entirely.
+ *
+ * Uncomment and adapt this for your game if it has a similar developer console.
+
+using System.Reflection;
 using HarmonyLib;
 using UnityEngine;
 
-namespace CrowdControl.Harmony;
-
-/// <summary>
-/// This is a game-specific example Harmony patch for Anger Foot's Terminal class.
-/// </summary>
-/// <remarks>
-/// These functions are usually called on the main game thread, depending on implementation.
-/// Blocking here may cause lag or crash the game entirely.
-/// </remarks>
 [HarmonyPatch]
 public static class Terminal
 {
@@ -41,10 +45,12 @@ public static class Terminal
                 object[] addLineParams = { "State Reset!", Color.red };
                 addLineMethod.Invoke(null, addLineParams);
             }
-            
+
             CrowdControlMod.Instance.Client.EnableAllEffects();
             return false;
         }
         return true;
     }
 }
+
+*/

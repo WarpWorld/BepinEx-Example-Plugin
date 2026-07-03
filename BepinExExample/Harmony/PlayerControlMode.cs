@@ -1,15 +1,18 @@
-﻿using HarmonyLib;
+﻿namespace CrowdControl.Harmony;
 
-namespace CrowdControl.Harmony;
+/* == EXAMPLE (Anger Foot) - a Harmony patch used to track game state ==
+ * Anger Foot doesn't directly expose whether the player is in a conversation, so this patch
+ * observes the game's own control-mode lookups and records the result on the GameStateManager,
+ * where GetGameState() uses it to report the Cutscene state.
+ *
+ * These functions are usually called on the main game thread, depending on implementation.
+ * Blocking here may cause lag or crash the game entirely.
+ *
+ * Uncomment and adapt this for your game (the IsActiveInConversation property it writes to
+ * is part of the commented example code in GameStateManager.cs).
 
-/// <summary>
-/// This is a game-specific example Harmony patch for Anger Foot's PlayerControlMode class.
-/// This patch is used to track the game's current state and update the GameStateManager accordingly.
-/// </summary>
-/// <remarks>
-/// These functions are usually called on the main game thread, depending on implementation.
-/// Blocking here may cause lag or crash the game entirely.
-/// </remarks>
+using HarmonyLib;
+
 [HarmonyPatch]
 public static class PlayerControlMode
 {
@@ -38,5 +41,6 @@ public static class PlayerControlMode
             }
         }
     }
-
 }
+
+*/

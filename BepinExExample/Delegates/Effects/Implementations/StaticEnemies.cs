@@ -1,7 +1,10 @@
-using ConnectorLib.JSON;
-using UnityEngine;
-
 namespace CrowdControl.Delegates.Effects.Implementations;
+
+/* == EXAMPLE (Anger Foot) - a timed effect with cross-effect conflicts ==
+ * See PassiveEnemies.cs for a full explanation of this pattern.
+ * Uncomment and adapt this for your game.
+
+using ConnectorLib.JSON;
 
 [Effect(
     id: "static_enemies",
@@ -16,10 +19,10 @@ public class StaticEnemies(CrowdControlMod mod, NetworkClient client) : Effect(m
         //this would never run if the effects were already running since it would be blocked by the conflict check
         //as such, we assume a player just playing with passive or static enemies on isn't going to be turning it off in a few seconds
         //and just fail here rather than retrying waiting for something that probably isn't happening
-        if (Cheats.PassiveEnemies || Cheats.StaticEnemies) return EffectResponse.Failure(request.ID);
+        if (Cheats.PassiveEnemies || Cheats.StaticEnemies) return EffectResponse.Failure(request.ID, StandardErrors.AlreadyInState);
 
         Cheats.StaticEnemies = true;
-        GameStateManager.DialogMsgAsync("Static Enemies Enabled", true).Forget();
+        GameStateManager.DialogMsgAsync($"{request.GetViewerDisplayName()} enabled Static Enemies", true).Forget();
 
         return EffectResponse.Success(request.ID);
     }
@@ -35,3 +38,5 @@ public class StaticEnemies(CrowdControlMod mod, NetworkClient client) : Effect(m
         return EffectResponse.Finished(request.ID);
     }
 }
+
+*/
