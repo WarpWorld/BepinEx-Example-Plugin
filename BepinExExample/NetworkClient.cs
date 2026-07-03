@@ -33,6 +33,7 @@ public partial class NetworkClient : IDisposable
     private readonly CancellationTokenSource m_quitting = new();
     private readonly object m_shutdownLock = new();
     private readonly object m_sendLock = new();
+    private readonly AutoResetEvent m_reconnectRequested = new(false);
     private volatile bool m_disposed;
 
     ~NetworkClient() => Dispose(false);
@@ -68,6 +69,9 @@ public partial class NetworkClient : IDisposable
 
         CloseConnection();
     }
+
+    private bool WaitForReconnectOrQuit(TimeSpan timeout) =>
+        WaitHandle.WaitAny(new WaitHandle[] { m_quitting.Token.WaitHandle, m_reconnectRequested }, timeout) != WaitHandle.WaitTimeout;
 
     private void CloseConnection()
     {
@@ -117,6 +121,30 @@ public partial class NetworkClient : IDisposable
     /// <summary>True if the game is connected to the Crowd Control client, false otherwise.</summary>
     public bool Connected => m_client?.Connected ?? false;
 
+    /// <summary>True if the Crowd Control client process/semaphore appears to be running.</summary>
+    public bool CrowdControlClientFound =>
+        IsCrowdControlSemaphorePresent() || (PROCESS_LOOKUP_FALLBACK && IsCrowdControlProcessRunning());
+
+    /// <summary>
+    /// Requests that the background connection loop drop the current socket and reconnect.
+    /// </summary>
+    /// <returns>True if a reconnect was requested, false if the Crowd Control client was not found or this client is shutting down.</returns>
+    public bool RequestReconnect()
+    {
+        if (m_disposed || m_quitting.IsCancellationRequested)
+            return false;
+
+        if (!CrowdControlClientFound)
+            return false;
+
+        // CloseConnection breaks an active ClientLoop read. The reconnect event wakes any retry sleep so the
+        // background loop can attempt the new connection immediately instead of waiting for its normal delay.
+        CloseConnection();
+        m_loggedConnectFailure = false;
+        m_reconnectRequested.Set();
+        return true;
+    }
+
     /// <summary>Creates a new Crowd Control client connection service object.</summary>
     /// <param name="mod">The Crowd Control game mod object.</param>
     public NetworkClient(CrowdControlMod mod)
@@ -152,7 +180,7 @@ public partial class NetworkClient : IDisposable
                     m_loggedNoProcess = true;
                 }
                 m_loggedConnectFailure = false; //the client went away - log the next connection failure (if any) once more
-                m_quitting.Token.WaitHandle.WaitOne((TimeSpan)TIMEOUT_NO_PROCESS);
+                WaitForReconnectOrQuit((TimeSpan)TIMEOUT_NO_PROCESS);
                 continue;
             }
 #pragma warning restore CS0162 // Unreachable code detected
@@ -199,7 +227,7 @@ public partial class NetworkClient : IDisposable
             if (m_quitting.IsCancellationRequested)
                 break;
 
-            m_quitting.Token.WaitHandle.WaitOne((TimeSpan)TIMEOUT_NO_CONNECTION);
+            WaitForReconnectOrQuit((TimeSpan)TIMEOUT_NO_CONNECTION);
         }
     }
 

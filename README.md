@@ -55,6 +55,12 @@ Displaying viewer names:
 	(from `EffectRequestEx.cs`) instead of reading `request.viewer` directly - it returns a
 	sanitized name and falls back to "the crowd" when no usable name is present.
 
+Manual reconnect hotkey:  
+	Press F9 in-game to request a Crowd Control reconnect. The plugin only attempts this when the
+	Crowd Control client process/semaphore is found, and the hotkey has a 5 second cooldown to avoid spam.
+	`CrowdControlMod.ShowGameUiMessage()` is the game-specific hook for displaying reconnect status in
+	your game's toast/HUD/dialog UI; it is intentionally a no-op in the example pack.
+
 `CrowdControlMod.Instance.Client` offers helper functions for hiding or disabling effects on the menu:  
 	`ShowEffects(params string[] codes)` / `ShowAllEffects()`  
 	`HideEffects(params string[] codes)` / `HideAllEffects()`  
