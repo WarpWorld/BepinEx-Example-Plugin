@@ -55,6 +55,10 @@ public partial class NetworkClient
     public bool HideEffects(params IEnumerable<string> codes) => Send(new EffectUpdate(codes, EffectStatus.NotVisible));
 
     /// <inheritdoc cref="HideEffects(string[])"/>
+    /// <param name="message">The reason the effects are hidden, shown to the streamer.</param>
+    public bool HideEffects(IEnumerable<string> codes, string? message) => Send(new EffectUpdate(codes, EffectStatus.NotVisible, message));
+
+    /// <inheritdoc cref="HideEffects(string[])"/>
     /// <summary>Asynchronously hides the specified effects on the menu.</summary>
     public Task<bool> HideEffectsAsync(params string[] codes) => SendAsync(new EffectUpdate(codes, EffectStatus.NotVisible));
 
@@ -80,6 +84,10 @@ public partial class NetworkClient
 
     /// <inheritdoc cref="EnableEffects(string[])"/>
     public bool EnableEffects(params IEnumerable<string> codes) => Send(new EffectUpdate(codes, EffectStatus.Selectable));
+
+    /// <inheritdoc cref="EnableEffects(string[])"/>
+    /// <param name="message">A message to include, if applicable.</param>
+    public bool EnableEffects(IEnumerable<string> codes, string? message) => Send(new EffectUpdate(codes, EffectStatus.Selectable, message));
 
     /// <inheritdoc cref="EnableEffects(string[])"/>
     /// <summary>Asynchronously makes the specified effects selectable on the menu.</summary>
@@ -109,6 +117,10 @@ public partial class NetworkClient
     public bool DisableEffects(params IEnumerable<string> codes) => Send(new EffectUpdate(codes, EffectStatus.NotSelectable));
 
     /// <inheritdoc cref="DisableEffects(string[])"/>
+    /// <param name="message">The reason the effects are unavailable, shown in viewer menus.</param>
+    public bool DisableEffects(IEnumerable<string> codes, string? message) => Send(new EffectUpdate(codes, EffectStatus.NotSelectable, message));
+
+    /// <inheritdoc cref="DisableEffects(string[])"/>
     /// <summary>Asynchronously makes the specified effects unselectable on the menu.</summary>
     public Task<bool> DisableEffectsAsync(params string[] codes) => SendAsync(new EffectUpdate(codes, EffectStatus.NotSelectable));
 
@@ -116,10 +128,11 @@ public partial class NetworkClient
     public Task<bool> DisableEffectsAsync(params IEnumerable<string> codes) => SendAsync(new EffectUpdate(codes, EffectStatus.NotSelectable));
 
     /// <summary>Makes all effects unselectable on the menu.</summary>
+    /// <param name="message">The reason the effects are unavailable, shown in viewer menus.</param>
     /// <returns>True if the message was sent successfully, false otherwise.</returns>
-    public bool DisableAllEffects() => DisableEffects(m_mod.EffectLoader.Effects.Keys);
+    public bool DisableAllEffects(string? message = null) => DisableEffects(m_mod.EffectLoader.Effects.Keys, message);
 
-    /// <inheritdoc cref="DisableAllEffects()"/>
+    /// <inheritdoc cref="DisableAllEffects(string?)"/>
     /// <summary>Asynchronously makes all effects unselectable on the menu.</summary>
     public Task<bool> DisableAllEffectsAsync() => DisableEffectsAsync(m_mod.EffectLoader.Effects.Keys);
     
