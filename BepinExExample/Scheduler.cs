@@ -197,6 +197,9 @@ public class Scheduler(CrowdControlMod mod, NetworkClient networkClient)
                     m_networkClient.Send(response);
                 }
                 break;
+            case RequestType.Version:
+                m_networkClient.Send(new VersionResponse(request.id, m_mod.Version));
+                break;
             case RequestType.GameUpdate:
                 m_mod.GameStateManager.UpdateGameState(true);
                 break;

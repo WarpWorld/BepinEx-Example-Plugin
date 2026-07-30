@@ -62,6 +62,9 @@
     <Reference Include="UnityEngine.IMGUIModule">
       <HintPath>$(GameAssemblyDir)\UnityEngine.IMGUIModule.dll</HintPath>
     </Reference>
+    <Reference Include="UnityEngine.InputLegacyModule">
+      <HintPath>$(GameAssemblyDir)\UnityEngine.InputLegacyModule.dll</HintPath>
+    </Reference>
     <Reference Include="UnityEngine.PhysicsModule">
       <HintPath>$(GameAssemblyDir)\UnityEngine.PhysicsModule.dll</HintPath>
     </Reference>
