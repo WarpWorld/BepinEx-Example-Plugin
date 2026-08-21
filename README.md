@@ -58,8 +58,24 @@ Displaying viewer names:
 Manual reconnect hotkey:  
 	Press F9 in-game to request a Crowd Control reconnect. The plugin only attempts this when the
 	Crowd Control client process/semaphore is found, and the hotkey has a 5 second cooldown to avoid spam.
-	`CrowdControlMod.ShowGameUiMessage()` is the game-specific hook for displaying reconnect status in
-	your game's toast/HUD/dialog UI; it is intentionally a no-op in the example pack.
+	Reconnect status is shown on the mod's own overlay (see below). `CrowdControlMod.ShowGameUiMessage()`
+	is where to also route messages into your game's own toast/HUD/dialog UI if it has one.
+
+On-screen overlay:
+	The `UI\` folder draws a small Crowd Control panel in the TOP RIGHT of the screen with IMGUI:
+	a connection dot, a row per running timed effect with a draining progress bar and countdown, and
+	short message lines. It hides itself completely when the Crowd Control app isn't running, so a
+	player who never starts Crowd Control sees nothing. F8 toggles it; the streamer can also turn the
+	pieces off in the mod's settings (`UI\ModSettings.cs`).
+
+	- `UI\EffectNames.cs` - fill this in from your Crowd Control pack so rows show "Speed Up" rather
+	  than `speedUp`. Unlisted codes fall back to a tidied-up version of the code.
+	- `UI\Overlay.cs` - move the panel by changing the card rect in `Draw`, or restyle it via
+	  `UI\CcTheme.cs` (the Crowd Control brand palette).
+	- If your game pauses by setting `Time.timeScale = 0`, tick the mod from `Update` instead of
+	  `FixedUpdate` (and use `Time.unscaledDeltaTime` for `DeltaTime`). Unity stops calling
+	  FixedUpdate at timeScale 0, so effects would otherwise freeze mid-countdown without ever
+	  registering as paused - here or in the Crowd Control app.
 
 `CrowdControlMod.Instance.Client` offers helper functions for hiding or disabling effects on the menu:  
 	`ShowEffects(params string[] codes)` / `ShowAllEffects()`  

@@ -64,6 +64,8 @@ public class CrowdControlMod : BaseUnityPlugin
         Logger.LogInfo($"Loaded {MOD_GUID}. Patching.");
         harmony.PatchAll();
 
+        UI.ModSettings.Initialize(Config);
+
         Logger.LogInfo("Initializing Crowd Control");
 
         try
@@ -118,7 +120,50 @@ public class CrowdControlMod : BaseUnityPlugin
     /// <summary>Called every rendered frame.</summary>
     void Update()
     {
+        UpdateClientPresence();
+        HandleOverlayToggleHotkey();
         HandleManualReconnectHotkey();
+    }
+
+    /// <summary>True if the Crowd Control app appears to be running on this machine.</summary>
+    /// <remarks>
+    /// Checked on a timer rather than every frame - it opens a named semaphore and can fall back to
+    /// a process scan, which is far too heavy for OnGUI.
+    /// </remarks>
+    private bool m_clientPresent;
+    private float m_nextClientCheck;
+
+    private const float CLIENT_CHECK_INTERVAL = 2f;
+
+    /// <summary>Refreshes whether the Crowd Control app is running, at a sane interval.</summary>
+    private void UpdateClientPresence()
+    {
+        float now = Time.realtimeSinceStartup;
+        if (now < m_nextClientCheck) return;
+
+        m_nextClientCheck = now + CLIENT_CHECK_INTERVAL;
+
+        try { m_clientPresent = Client?.CrowdControlClientFound ?? false; }
+        catch { m_clientPresent = false; }
+    }
+
+    /// <summary>Draws the connection indicator and any active timed effects.</summary>
+    void OnGUI()
+    {
+        try { UI.Overlay.Draw(ClientConnected, m_clientPresent); }
+        catch {/* never let drawing break the frame */}
+    }
+
+    /// <summary>F8 hides or shows the mod's on-screen display.</summary>
+    private void HandleOverlayToggleHotkey()
+    {
+        if (!Input.GetKeyDown(KeyCode.F8)) return;
+
+        bool visible = UI.Overlay.Toggle();
+        Logger.LogInfo($"F8 pressed - overlay {(visible ? "shown" : "hidden")}.");
+
+        //forced, so the confirmation is visible even though we may have just turned the UI off
+        if (visible) UI.Overlay.Show("Crowd Control display on (F8)", force: true);
     }
 
     private void HandleManualReconnectHotkey()
@@ -135,12 +180,12 @@ public class CrowdControlMod : BaseUnityPlugin
 
         if (Client?.RequestReconnect() == true)
         {
-            ShowGameUiMessage("Reconnecting to Crowd Control...");
+            UI.Overlay.Show("Reconnecting to Crowd Control...", force: true);
             Logger.LogInfo("Manual Crowd Control reconnect queued.");
         }
         else
         {
-            ShowGameUiMessage("Crowd Control client not found.");
+            UI.Overlay.Show("Crowd Control client not found.", force: true);
             Logger.LogInfo("Manual Crowd Control reconnect skipped because the Crowd Control client was not found.");
         }
     }
@@ -149,12 +194,16 @@ public class CrowdControlMod : BaseUnityPlugin
     /// Displays a message to the player using the game's UI/toast system.
     /// </summary>
     /// <remarks>
-    /// This is intentionally a no-op in the example pack because UI/toast APIs are game-specific.
-    /// Wire this to your game's toast, subtitle, HUD message, or dialog system when available.
+    /// Goes to the mod's own overlay (see <see cref="UI.Overlay"/>), which works in any game and
+    /// respects the streamer's opt-out. If your game has a toast, subtitle, or HUD message system of
+    /// its own, call it here as well - a native-looking line in the middle of the screen is easier to
+    /// notice than a corner panel, and the two complement each other.
     /// </remarks>
     public void ShowGameUiMessage(string message)
     {
-        //TODO: Replace this with your game's UI/toast call, e.g. ToastManager.Show(message).
+        UI.Overlay.Show(message);
+
+        //TODO: optionally also call your game's own toast/subtitle system, e.g. ToastManager.Show(message).
     }
 
     /// <summary>Called by Unity when the application gains or loses focus.</summary>

@@ -1,4 +1,4 @@
-using System.Collections;
+﻿using System.Collections;
 using System.Collections.Concurrent;
 using ConnectorLib.JSON;
 using CrowdControl.Delegates.Effects;
@@ -209,6 +209,41 @@ public class Scheduler(CrowdControlMod mod, NetworkClient networkClient)
     public void Enqueue(EffectRequest request, Effect effect)
     {
         m_requestQueue.Enqueue(new RequestState(request, effect));
+    }
+
+    /// <summary>Snapshots the running timed effects for the on-screen overlay.</summary>
+    /// <remarks>
+    /// Read from the game thread during OnGUI. Anything unexpected returns an empty list rather than
+    /// throwing - a broken countdown row must never take a frame down with it.
+    /// </remarks>
+    public static UI.Overlay.ActiveEffect[] ActiveTimedEffects()
+    {
+        Scheduler scheduler = CrowdControlMod.Instance?.Scheduler;
+        if (scheduler == null) return Array.Empty<UI.Overlay.ActiveEffect>();
+
+        try
+        {
+            List<UI.Overlay.ActiveEffect> list = new();
+            foreach (RequestState state in scheduler.m_runningEffects.Values)
+            {
+                TimedEffectState timed = state.TimedEffectState;
+                if (timed == null) continue;
+                if (timed.State is not (TimedEffectState.EffectState.Running or TimedEffectState.EffectState.Paused))
+                    continue;
+
+                list.Add(new UI.Overlay.ActiveEffect(
+                    UI.EffectNames.Pretty(state.Request.code),
+                    (float)timed.TimeRemaining,
+                    (float)timed.Duration,
+                    timed.State == TimedEffectState.EffectState.Paused));
+            }
+
+            return list.ToArray();
+        }
+        catch
+        {
+            return Array.Empty<UI.Overlay.ActiveEffect>();
+        }
     }
 
     /// <summary>Pauses all running timed effects.</summary>
