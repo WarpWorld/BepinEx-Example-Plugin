@@ -19,7 +19,17 @@ public class TimedEffectState
         Running,
         Paused,
         Finished,
-        Errored
+        Errored,
+
+        /// <summary>
+        /// <see cref="Effect.Start"/> answered something other than Success, so the effect never applied.
+        /// </summary>
+        /// <remarks>
+        /// Distinct from <see cref="Finished"/>, which means the effect ran and ended: a declined effect has
+        /// no state to unwind and must not answer <c>finished</c> later. The scheduler drops it on the next
+        /// tick because <c>RequestState.MoveNext</c> falls through to its default case.
+        /// </remarks>
+        Declined
     }
 
     public EffectState State { get; private set; } = EffectState.NotStarted;
@@ -76,8 +86,21 @@ public class TimedEffectState
             try
             {
                 response = Effect.Start(Request);
-                TimeRemaining = Duration;
-                State = EffectState.Running;
+
+                //Only a Success actually started the effect. A timed effect is entitled to answer Retry
+                //("not right now") or Unavailable ("never in this session") from Start, and ignoring that
+                //answer left the effect Running regardless: a full countdown for something that never
+                //applied, the viewer's genuine retry refused with "already running", and a finished at the
+                //end of it.
+                if (response.status == EffectStatus.Success)
+                {
+                    TimeRemaining = Duration;
+                    State = EffectState.Running;
+                }
+                else
+                {
+                    State = EffectState.Declined;
+                }
             }
             catch (Exception e)
             {
@@ -175,7 +198,9 @@ public class TimedEffectState
         {
             // ReSharper disable once AssignmentInConditionalExpression
             while (!(locked = TryGetLock())) yield return null;
-            if (State == EffectState.Finished) yield break;
+            //Declined as well as Finished: an effect that never started has nothing to tear down, and
+            //calling its Stop would run teardown for state it never created
+            if (State == EffectState.Finished || State == EffectState.Declined) yield break;
 
             try
             {
