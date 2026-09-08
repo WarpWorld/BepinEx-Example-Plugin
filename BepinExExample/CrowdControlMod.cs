@@ -1,4 +1,4 @@
-﻿using BepInEx;
+using BepInEx;
 using BepInEx.Logging;
 using CrowdControl.Delegates.Effects;
 using System.Reflection;
@@ -18,6 +18,20 @@ public class CrowdControlMod : BaseUnityPlugin
     public const string MOD_GUID = "WarpWorld.CrowdControl"; //unique BepInEx plugin ID - fine to leave as-is since only one Crowd Control mod is installed per game
     public const string MOD_NAME = "Crowd Control for Anger Foot"; //display name shown in the BepInEx log - put your game's name here
     public const string MOD_VERSION = "1.0.0.0"; //bump this with each release of your mod
+
+    /// <summary>Whether this mod supports community-written effects loaded from disk.</summary>
+    /// <remarks>
+    /// Opt-in per game, and deliberately a compile-time constant rather than a setting: a streamer
+    /// cannot turn this on, so a mod that has not adopted custom effects will never compile or run
+    /// code from the custom effects folder no matter what ends up in it or in the config file.
+    /// <para>
+    /// Before setting this to true, make sure the game's Crowd Control pack has
+    /// <c>allowCustomEffects</c> set - without it the app rejects the effects the mod registers, and
+    /// nothing a viewer can buy will appear. See CustomEffect.md.
+    /// </para>
+    /// </remarks>
+    public const bool CUSTOM_EFFECTS_SUPPORTED = false;
+
     
     /// <summary>The real-time duration of the current tick, used to advance timed effect countdowns.</summary>
     /// <remarks>
@@ -41,6 +55,9 @@ public class CrowdControlMod : BaseUnityPlugin
     
     /// <summary>The effect class loader.</summary>
     public EffectLoader EffectLoader { get; private set; } = null!;
+
+    /// <summary>The loader for community-written effects dropped into the custom effects folder.</summary>
+    public CustomEffects.CustomEffectManager CustomEffects { get; private set; } = null!;
 
     /// <summary>
     /// Gets a value indicating whether the client is connected.
@@ -74,6 +91,10 @@ public class CrowdControlMod : BaseUnityPlugin
             Client = new(this);
             EffectLoader = new(this, Client);
             Scheduler = new(this, Client);
+
+            //after the scheduler, so a custom effect that fires on load has somewhere to go
+            CustomEffects = new(this, Client);
+            CustomEffects.LoadAll();
         }
         catch (Exception e)
         {
@@ -87,6 +108,7 @@ public class CrowdControlMod : BaseUnityPlugin
     {
         try
         {
+            CustomEffects?.Dispose();
             Client?.Stop();
             Client?.Dispose();
         }
@@ -97,6 +119,7 @@ public class CrowdControlMod : BaseUnityPlugin
     {
         try
         {
+            CustomEffects?.Dispose();
             Client?.Stop();
             Client?.Dispose();
         }
@@ -115,6 +138,10 @@ public class CrowdControlMod : BaseUnityPlugin
         GameStateManager.UpdateGameState();
 
         Scheduler?.Tick();
+
+        //custom effect loading touches Unity through effect constructors, so it happens here rather
+        //than on the file watcher's thread
+        CustomEffects?.Tick();
     }
 
     /// <summary>Called every rendered frame.</summary>

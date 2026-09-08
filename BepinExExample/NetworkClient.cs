@@ -262,6 +262,10 @@ public partial class NetworkClient : IDisposable
             //this just sets a flag - the actual report is sent from the game thread
             m_mod.GameStateManager?.RequestStateResend();
 
+            //and it needs to be told about any custom effects, since it has no other way to know
+            //which menu entries should exist for this session
+            m_mod.CustomEffects?.RequestManifestResend();
+
             try
             {
                 while (!m_quitting.IsCancellationRequested)

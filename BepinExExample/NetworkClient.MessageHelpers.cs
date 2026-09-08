@@ -65,6 +65,22 @@ public partial class NetworkClient
     /// <inheritdoc cref="HideEffectsAsync(string[])"/>
     public Task<bool> HideEffectsAsync(params IEnumerable<string> codes) => SendAsync(new EffectUpdate(codes, EffectStatus.NotVisible));
 
+    /// <summary>Hides every effect in the specified groups on the menu.</summary>
+    /// <param name="groups">The effect groups to hide.</param>
+    /// <returns>True if the message was sent successfully, false otherwise.</returns>
+    /// <remarks>
+    /// Useful for hiding a set of effects without having to know their IDs - which is the only way to
+    /// hide effects a different machine registered.
+    /// </remarks>
+    public bool HideEffectGroups(params string[] groups) =>
+        Send(new EffectUpdate(groups, EffectUpdate.IdentifierType.Group, EffectStatus.NotVisible));
+
+    /// <summary>Shows every effect in the specified groups on the menu.</summary>
+    /// <param name="groups">The effect groups to show.</param>
+    /// <returns>True if the message was sent successfully, false otherwise.</returns>
+    public bool ShowEffectGroups(params string[] groups) =>
+        Send(new EffectUpdate(groups, EffectUpdate.IdentifierType.Group, EffectStatus.Visible));
+
     /// <summary>Hides all effects on the menu.</summary>
     /// <returns>True if the message was sent successfully, false otherwise.</returns>
     public bool HideAllEffects() => HideEffects(m_mod.EffectLoader.Effects.Keys);

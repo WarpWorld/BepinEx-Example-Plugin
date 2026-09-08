@@ -29,6 +29,16 @@
 
   <ItemGroup>
     <PackageReference Include="Newtonsoft.Json" Version="13.0.4" />
+    <!-- Compiles the custom effects a streamer drops into %APPDATA%\CrowdControl-Apps\CustomEffects.
+         Only loaded when a pack has actually changed, so a normal launch never pays for it.
+         Pinned to 4.8.0: the last line that targets netstandard2.0 without pulling in dependencies
+         that clash with the ones Unity's Mono runtime already has.
+         Set IncludeCustomEffectCompiler to false to leave the ~14MB of compiler out of the build.
+         Custom effects then have to be distributed as prebuilt DLLs, which the mod says plainly in
+         the log rather than failing in a way anyone would have to guess at. -->
+    <PackageReference Include="Microsoft.CodeAnalysis.CSharp" Version="4.8.0">
+      <ExcludeAssets Condition="'$(IncludeCustomEffectCompiler)' == 'false'">runtime</ExcludeAssets>
+    </PackageReference>
   </ItemGroup>
 
   <ItemGroup>
