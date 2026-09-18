@@ -77,6 +77,47 @@ On-screen overlay:
 	  FixedUpdate at timeScale 0, so effects would otherwise freeze mid-countdown without ever
 	  registering as paused - here or in the Crowd Control app.
 
+Custom effects (community-written effects loaded from disk) - see [CustomEffect.md](CustomEffect.md)
+for the full guide, including how to write one:  
+	The mod can load effects a creator drops into `%APPDATA%\CrowdControl-Apps\CustomEffects\<GameName>`,
+	compile them at launch, and register them alongside the effects built into the mod. They are the
+	same thing to everything downstream: they can be instant or timed, and they can declare conflicts
+	against each other or against your own effects to stop both running at once.
+
+	- Each subfolder is one pack, compiled as a single assembly so a multi-file effect can share
+	  types. A loose `.cs` file at the top level is its own pack, so one syntax error does not take
+	  down anyone else's effects. Prebuilt `.dll` files work too, and are the sensible way to hand a
+	  finished effect to someone else.
+	- Compiled packs are cached by content hash, so a streamer pays the compile cost once per change
+	  rather than once per launch. A mod version bump invalidates the cache.
+	- `[EffectMenu]` (next to the usual `[Effect]`) supplies the name, author, price, description,
+	  category, and everything else the menu entry needs. These are registered over the existing RPC
+	  channel (`CustomEffectsRpc.AddEffects`, relayed by the app to the Crowd Control API, which is
+	  where the streamer's credentials and the game pack ID live). Your game pack needs
+	  `allowCustomEffects` set or the call is rejected; nothing else is required of the pack.
+	- Effect IDs are derived, not declared: `cc_custom_customEffect_mario_633185e18e42884` is the
+	  readable name, the author, and a hash of the game, author, name, and whether it is timed. The
+	  same effect therefore gets the same ID on every machine, which is what lets the app recognise
+	  it and keep the streamer's settings. Renaming an effect or changing its author gives it a new
+	  ID, and the old settings stay with the old name.
+	- Every generated effect joins the `__cc_custom_effects` group. On connect the mod hides that
+	  whole group and then shows only the effects it actually loaded, so a streamer playing on a
+	  machine without the files does not offer viewers effects that cannot run. Nothing is ever
+	  deleted - the records stay on the streamer's account with the prices they set, ready for the
+	  next time the files are present.
+	- A purchase reaches the connector with the handler ID in `request.arguments`, which
+	  `EffectLoader.TryResolve` reads before falling back to the effect code, so it works whether the
+	  client sends the custom effect's own ID or something else.
+	- Crowd Control holds at most 75 custom effects per game; the mod logs an error and registers the
+	  first 75 rather than failing the whole batch.
+	- On by default, with `AllowCustomEffects` in the mod settings to turn it off. Code in that folder
+	  runs as part of the game, and every pack that loads is logged with its content hash.
+	- Adding a pack works while the game is running. Changing one needs a restart, because Mono
+	  cannot unload an assembly - `DevReload` trades that correctness for iteration speed while
+	  writing effects.
+	- Set `IncludeCustomEffectCompiler=false` when building to leave the ~14MB C# compiler out of the
+	  mod. Custom effects then have to be distributed as prebuilt DLLs.
+
 `CrowdControlMod.Instance.Client` offers helper functions for hiding or disabling effects on the menu:  
 	`ShowEffects(params string[] codes)` / `ShowAllEffects()`  
 	`HideEffects(params string[] codes)` / `HideAllEffects()`  
